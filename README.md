@@ -10,6 +10,8 @@ Sistema local para transcribir archivos de audio y exportar resultados utilizand
 - Procesamiento y normalización de audio con FFmpeg
 - Descarga de resultados en formato TXT
 - Interfaz web moderna con React, Vite y TailwindCSS
+- **Sistema de autenticación con JWT**
+- **Historial de transcripciones por usuario**
 
 ## Estructura del Proyecto
 
@@ -20,17 +22,39 @@ WhisperMeetingProject/
 │   ├── requirements.txt  # Dependencias de Python
 │   ├── .env              # Variables de entorno (API keys, etc.)
 │   ├── temp/             # Almacenamiento temporal de archivos
-│   └── utils/            # Utilidades para procesamiento
-│       ├── __init__.py   
-│       ├── audio_processor.py  # Procesamiento de archivos de audio
-│       └── transcriber.py      # Transcripción con Deepgram
+│   ├── utils/            # Utilidades para procesamiento
+│   │   ├── __init__.py   
+│   │   ├── audio_processor.py  # Procesamiento de archivos de audio
+│   │   └── transcriber.py      # Transcripción con Deepgram
+│   ├── auth/             # Sistema de autenticación
+│   │   ├── __init__.py
+│   │   ├── jwt.py        # Autenticación con JWT
+│   │   └── utils.py      # Utilidades para hash de contraseñas
+│   ├── database/         # Conexión y modelos de base de datos
+│   │   ├── __init__.py
+│   │   ├── connection.py # Configuración de SQLite
+│   │   └── init_db.py    # Inicialización de la base de datos
+│   ├── models/           # Modelos de datos
+│   │   ├── __init__.py
+│   │   ├── models.py     # Modelos SQLAlchemy
+│   │   └── schemas.py    # Esquemas Pydantic
+│   └── routers/          # Routers de la API
+│       ├── __init__.py
+│       ├── users.py      # Endpoints de usuarios
+│       └── transcriptions.py # Endpoints de transcripciones
 │
 ├── frontend/             # Aplicación React con Vite y TailwindCSS
 │   ├── src/              # Código fuente de React
 │   │   ├── components/   # Componentes de la interfaz
 │   │   │   ├── Header.jsx       # Encabezado de la aplicación
 │   │   │   ├── Footer.jsx       # Pie de página
+│   │   │   ├── Login.jsx        # Componente de inicio de sesión
+│   │   │   ├── Register.jsx     # Componente de registro
+│   │   │   ├── Auth.jsx         # Contenedor de autenticación
+│   │   │   ├── TranscriptionHistory.jsx # Historial de transcripciones
 │   │   │   └── TranscriptionView.jsx  # Vista de transcripción
+│   │   ├── contexts/     # Contextos de React
+│   │   │   └── AuthContext.jsx  # Contexto de autenticación
 │   │   ├── App.jsx       # Componente principal
 │   │   ├── main.jsx      # Punto de entrada de React
 │   │   └── index.css     # Estilos globales con TailwindCSS
@@ -40,9 +64,10 @@ WhisperMeetingProject/
 │   ├── postcss.config.js # Configuración de PostCSS
 │   └── package.json      # Dependencias y scripts
 │
-├── run.sh                # Script para iniciar todo el sistema
-├── start_backend.sh      # Script para iniciar solo el backend
-├── start_frontend.sh     # Script para iniciar solo el frontend
+├── initialize_app.py     # Script para inicializar la base de datos y crear usuario
+├── start_app.py          # Script para iniciar todo el sistema
+├── AUTH_GUIDE.md         # Guía del sistema de autenticación
+├── DEEPGRAM_GUIDE.md     # Guía para configurar Deepgram
 ├── API_REFERENCE.md      # Documentación de la API
 └── README.md             # Documentación del proyecto
 ```
@@ -62,19 +87,7 @@ WhisperMeetingProject/
    cd ~/WhisperMeetingProject
    ```
 
-2. Hacer ejecutable el script de inicio:
-   ```bash
-   chmod +x run.sh start_backend.sh start_frontend.sh
-   ```
-
-3. Ejecutar el script de inicio (instalará todas las dependencias automáticamente):
-   ```bash
-   ./run.sh
-   ```
-
-Si prefieres instalar manualmente:
-
-1. Instalar dependencias del backend:
+2. Instalar dependencias del backend:
    ```bash
    cd backend
    python -m venv venv
@@ -82,33 +95,63 @@ Si prefieres instalar manualmente:
    pip install -r requirements.txt
    ```
 
-2. Instalar dependencias del frontend:
+3. Instalar dependencias del frontend:
    ```bash
    cd frontend
    npm install
    ```
 
+4. Inicializar la base de datos y crear un usuario (opcional):
+   ```bash
+   python initialize_app.py --create-user
+   ```
+   
+   Puedes personalizar los datos del usuario:
+   ```bash
+   python initialize_app.py --create-user --username miusuario --email correo@ejemplo.com --password micontraseña
+   ```
+
 ## Uso
 
-1. Iniciar el sistema completo con el script:
+1. Iniciar el sistema con el script:
    ```bash
-   ./run.sh
+   python start_app.py
    ```
 
-   O iniciar por separado backend y frontend:
+2. Alternativamente, puedes iniciar manualmente los servidores:
+   
+   Backend:
    ```bash
-   ./start_backend.sh
-   ./start_frontend.sh
+   cd backend
+   uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
+   
+   Frontend:
+   ```bash
+   cd frontend
+   npm run dev
    ```
 
-2. Abrir el navegador web y acceder a:
+3. Abrir el navegador web y acceder a:
    ```
    http://localhost:5173
    ```
 
-3. Subir un archivo de audio usando la interfaz
-4. Esperar a que se complete la transcripción
-5. Ver y descargar los resultados
+4. Iniciar sesión con tus credenciales o registrar una nueva cuenta
+5. Subir un archivo de audio usando la interfaz
+6. Esperar a que se complete la transcripción
+7. Ver y descargar los resultados
+
+## Sistema de Autenticación
+
+La aplicación utiliza un sistema de autenticación basado en tokens JWT (JSON Web Tokens):
+
+- **Registro de usuario**: Los usuarios pueden crear una cuenta con correo electrónico, nombre de usuario y contraseña
+- **Inicio de sesión**: Genera un token JWT que se usa para autenticar solicitudes a la API
+- **Protección de rutas**: Sólo los usuarios autenticados pueden acceder a ciertos endpoints
+- **Historial de transcripciones**: Cada transcripción se asocia al usuario que la creó
+
+Para obtener más información sobre el sistema de autenticación, consulta [AUTH_GUIDE.md](./AUTH_GUIDE.md).
 
 ## Configuración de Deepgram
 
@@ -121,17 +164,9 @@ Para utilizar la aplicación, necesitas una clave API de Deepgram:
    DEEPGRAM_API_KEY=tu_clave_api_aqui
    ```
 
-- Menores costos por hora de audio procesada
-
 **Importante**: Se requiere una clave API de Deepgram para usar el servicio de transcripción.
 
-### Modelos de Transcripción
-
-- **Nova-2**: Recomendado para casos multilingües, tiene excelente soporte para español y otros idiomas. Según la documentación oficial de Deepgram, Nova-2 tiene una tasa de preferencia 34% mayor que Whisper en pruebas de usuarios.
-- **Nova-3**: Modelo más reciente y preciso, pero con limitaciones en soporte multilingüe (solo disponible en beta para idiomas diferentes al inglés).
-- **Whisper-large**: Buena opción para casos multilingües, pero es menos eficiente y más lento que los modelos nativos de Deepgram.
-- **Enhanced**: Modelo balanceado en velocidad y precisión.
-- **Base**: Más rápido pero menos preciso.
+Para más detalles sobre la configuración de Deepgram, consulta [DEEPGRAM_GUIDE.md](./DEEPGRAM_GUIDE.md).
 
 ### Variables de Entorno (.env)
 
@@ -152,16 +187,31 @@ LANGUAGE=es-419
 # Configuración del servidor
 HOST=0.0.0.0
 PORT=8000
+
+# Configuración JWT (generada automáticamente por initialize_app.py)
+JWT_SECRET_KEY=clave_secreta_generada_automaticamente
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
 ## API REST
 
 El sistema proporciona una API REST para integraciones. Los endpoints principales:
 
-- `POST /upload-file/`: Sube un archivo y obtiene transcripción
-- `GET /status/{process_id}`: Verifica el estado de la transcripción
-- `GET /results/{process_id}`: Obtiene resultados de la transcripción
-- `GET /download/{process_id}?format={txt}`: Descarga resultados
+- **Autenticación**:
+  - `POST /users/register`: Registro de usuarios
+  - `POST /users/token`: Inicio de sesión y obtención de token
+
+- **Transcripciones**:
+  - `POST /upload-file/`: Sube un archivo y obtiene transcripción
+  - `GET /status/{process_id}`: Verifica el estado de la transcripción
+  - `GET /results/{process_id}`: Obtiene resultados de la transcripción
+  - `GET /download/{process_id}?format={txt}`: Descarga resultados
+
+- **Historial de transcripciones**:
+  - `GET /transcriptions/`: Obtiene todas las transcripciones del usuario
+  - `GET /transcriptions/{id}`: Obtiene una transcripción específica
+  - `POST /transcriptions/`: Crea una transcripción manualmente
+  - `DELETE /transcriptions/{id}`: Elimina una transcripción
 
 Ver [API_REFERENCE.md](./API_REFERENCE.md) para documentación completa.
 
@@ -171,47 +221,40 @@ Ver [API_REFERENCE.md](./API_REFERENCE.md) para documentación completa.
 
 - Modificar estilos: Editar `frontend/src/index.css` y `tailwind.config.js`
 - Añadir componentes: Crear nuevos componentes en `frontend/src/components/`
+- Personalizar autenticación: Modificar `frontend/src/contexts/AuthContext.jsx`
 
 ### Backend
 
 - Cambiar modelos de Deepgram: Editar `TRANSCRIPTION_MODEL` en `.env`
 - Optimizar procesamiento de audio: Modificar `backend/utils/audio_processor.py`
 - Ajustar parámetros de Deepgram: Editar configuraciones en `backend/utils/transcriber.py`
+- Personalizar sistema de autenticación: Modificar `backend/auth/jwt.py`
 
 ## Solución de Problemas
 
 - **Error de FFmpeg**: Instalar FFmpeg si no está presente
   ```bash
-  sudo apt update && sudo apt install -y ffmpeg
+  # Ubuntu/Debian
+  sudo apt-get update
+  sudo apt-get install ffmpeg
+  
+  # macOS
+  brew install ffmpeg
   ```
 
-- **Error de transcripción**: Asegúrate de que la API key de Deepgram sea válida y está configurada en el archivo `.env`
-
-- **Error "Nova-3 multilingual support is currently available only in beta"**: Este error ocurre porque el modelo Nova-3 no tiene soporte completo para idiomas distintos al inglés en la API estándar. Cambia a Nova-2 en el archivo `.env`:
-  ```
-  TRANSCRIPTION_MODEL=nova-2
+- **Error de autenticación**: Verificar que se haya inicializado correctamente la base de datos
+  ```bash
+  python initialize_app.py
   ```
 
-- **Error "not found"**: Si obtienes un error 404, verifica que los servidores de backend y frontend estén ejecutándose correctamente
+- **Token expirado**: Los tokens JWT expiran después de 30 minutos por defecto. Vuelve a iniciar sesión para obtener un nuevo token.
 
-## Tecnologías Utilizadas
+- **Error en la API de Deepgram**: Verificar que la clave API esté correctamente configurada en el archivo `.env`.
 
-- **Backend**: FastAPI, Deepgram, FFmpeg
-- **Frontend**: React, Vite, TailwindCSS, FilePond
-- **Procesamiento**: Python, FFmpeg, Deepgram API
+## Contribución
 
-## Créditos
+Las contribuciones son bienvenidas. Para cambios importantes, abre primero un issue para discutir lo que te gustaría cambiar.
 
-- Deepgram: [Deepgram API](https://developers.deepgram.com/)
-- Frontend desarrollado con React, Vite y TailwindCSS
+## Licencia
 
-## Notas sobre Rendimiento
-
-Según la documentación de Deepgram y las pruebas realizadas:
-
-1. **Nova-2** ofrece una excelente precisión multilingüe con soporte completo para español y otros idiomas.
-   - Se utiliza la variante "es-419" específica para Latinoamérica, que mejora significativamente el reconocimiento de acentos y expresiones regionales.
-2. **Whisper-large** es una alternativa viable para transcripción multilingüe, pero es menos eficiente y más lento que los modelos nativos de Deepgram.
-3. **Nova-3** tiene la mejor precisión general pero actualmente solo ofrece soporte completo para inglés en la API estándar (soporte multilingüe solo en beta).
-
-Nova-2 es actualmente la mejor opción para transcribir contenido en español latinoamericano, combinando buena precisión con velocidad de procesamiento.
+Este proyecto está licenciado bajo la Licencia MIT.

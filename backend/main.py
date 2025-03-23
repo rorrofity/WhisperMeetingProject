@@ -6,14 +6,23 @@ import uuid
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from sqlalchemy.orm import Session
 
-from utils.audio_processor import AudioProcessor
-from utils.transcriber import Transcriber
+# Módulos internos de la aplicación - Corregimos las rutas para importar desde el directorio raíz
+from backend.utils.audio_processor import AudioProcessor
+from backend.utils.transcriber import Transcriber
+
+# Importar nuevos módulos para autenticación y base de datos
+from backend.database.connection import get_db, SessionLocal
+from backend.database.init_db import init_db
+from backend.models.models import User, Transcription as DBTranscription
+from backend.auth.jwt import get_current_active_user
+from backend.routers import users, transcriptions
 
 # Load environment variables
 load_dotenv()
@@ -37,6 +46,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Incluir los routers para usuarios y transcripciones
+app.include_router(users.router)
+app.include_router(transcriptions.router)
+
 # Create directories
 TEMP_DIR = Path("temp")
 TEMP_DIR.mkdir(exist_ok=True)
@@ -50,6 +63,9 @@ audio_processor = AudioProcessor(temp_dir=TEMP_DIR)
 default_model = os.getenv("TRANSCRIPTION_MODEL", "nova-3")
 logger.info(f"Using transcription model: {default_model}")
 
+# Initialize database
+init_db()
+
 # Store job status and results
 jobs = {}  # type: Dict[str, Dict[str, Any]]
 
@@ -57,6 +73,7 @@ jobs = {}  # type: Dict[str, Dict[str, Any]]
 class JobStatus(BaseModel):
     status: str
     error: Optional[str] = None
+    job_id: Optional[str] = None
 
 
 @app.get("/")
@@ -65,10 +82,12 @@ async def root():
     return {"message": "Whisper Meeting Transcriber API is running"}
 
 
-@app.post("/upload-file/")
+@app.post("/upload-file/", response_model=JobStatus)
 async def upload_file_simple(
     file: UploadFile = File(...),
-    background_tasks: BackgroundTasks = None
+    background_tasks: BackgroundTasks = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
 ):
     """
     Upload an audio file for transcription using configured model from .env.
@@ -76,70 +95,70 @@ async def upload_file_simple(
     Args:
         file: Audio file to transcribe
         background_tasks: FastAPI BackgroundTasks for async processing
+        current_user: Usuario actualmente autenticado
+        db: Sesión de base de datos
         
     Returns:
         JSON response with process ID
     """
-    try:
-        # Generate a process ID
-        process_id = str(uuid.uuid4())
+    # Check file type
+    if not file.content_type.startswith(('audio/', 'video/')):
+        raise HTTPException(status_code=400, detail="File must be an audio or video file.")
+    
+    # Generate process ID
+    process_id = str(uuid.uuid4())
+    logger.info(f"Generando ID de proceso: {process_id}")
+    
+    # Create directory for this job
+    job_dir = TEMP_DIR / process_id
+    job_dir.mkdir(exist_ok=True)
+    
+    # Save file
+    file_path = job_dir / file.filename
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    
+    # Store job info
+    jobs[process_id] = {
+        "status": "uploaded",
+        "file_path": str(file_path),
+        "original_filename": file.filename,
+        "model_size": default_model,
+        "user_id": current_user.id  # Asociar con el usuario actual
+    }
+    
+    # Process in background
+    if background_tasks:
+        background_tasks.add_task(process_audio_file_simple, process_id)
+    else:
+        # For testing without background tasks
+        await process_audio_file_simple(process_id)
         
-        # Create a directory for this job
-        job_dir = TEMP_DIR / process_id
-        job_dir.mkdir(exist_ok=True)
-        
-        # Save the uploaded file
-        temp_file_path = job_dir / file.filename
-        logger.info(f"Subiendo archivo: {file.filename}")
-        logger.info(f"Ruta temporal completa: {temp_file_path}")
-        
-        # Save the uploaded file in chunks
-        with open(temp_file_path, "wb") as buffer:
-            chunk_size = 1024 * 1024  # 1MB chunks
-            while True:
-                chunk = await file.read(chunk_size)
-                if not chunk:
-                    break
-                buffer.write(chunk)
-        
-        logger.info(f"Archivo guardado exitosamente en: {temp_file_path}")
-        
-        # Initialize job status
-        jobs[process_id] = {
-            "status": "processing_audio",
-            "file_path": str(temp_file_path),
-            "original_filename": file.filename,  
-            "model_size": default_model,  
-            "summary_method": None,  
-            "error": None,
-            "results": {}
-        }
-        
-        logger.info(f"Job inicializado: {jobs[process_id]}")
-        
-        # Process the audio file in the background
-        if background_tasks:
-            background_tasks.add_task(process_audio_file_simple, process_id)
-        else:
-            # For testing, process synchronously
-            await process_audio_file_simple(process_id)
-        
-        return {
-            "process_id": process_id,
-            "message": "Audio file uploaded successfully. Processing..."
-        }
-        
-    except Exception as e:
-        logger.error(f"Error processing upload: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error processing upload: {str(e)}")
+        # Guardar la transcripción en la base de datos cuando esté completa
+        if jobs[process_id]["status"] == "completed":
+            # Crear entrada en la base de datos
+            db_transcription = DBTranscription(
+                title=f"Transcripción de {file.filename}",
+                original_filename=file.filename,
+                file_path=str(file_path),
+                content=jobs[process_id]["results"]["transcription"],
+                user_id=current_user.id
+            )
+            db.add(db_transcription)
+            db.commit()
+    
+    logger.info(f"Enviando respuesta con process_id: {process_id}")
+    return {"status": "processing", "job_id": process_id}
 
 
-@app.post("/upload/")
+@app.post("/upload/", response_model=JobStatus)
 async def upload_file(
     file: UploadFile = File(...),
     model_size: str = Form(default_model),
     summary_method: str = Form("local"),
-    background_tasks: BackgroundTasks = None
+    background_tasks: BackgroundTasks = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
 ):
     """
     Upload an audio file for transcription.
@@ -149,62 +168,59 @@ async def upload_file(
         model_size: Size of the model to use ('base', 'enhanced', 'nova', 'nova-2', 'nova-3', 'whisper-large', etc.)
         summary_method: Method for generating summaries ('local', 'gpt')
         background_tasks: FastAPI BackgroundTasks for async processing
+        current_user: Usuario actualmente autenticado
+        db: Sesión de base de datos
         
     Returns:
         JSON response with process ID
     """
-    try:
-        # Generate a process ID
-        process_id = str(uuid.uuid4())
+    # Check file type
+    if not file.content_type.startswith(('audio/', 'video/')):
+        raise HTTPException(status_code=400, detail="File must be an audio or video file.")
+    
+    # Generate process ID
+    process_id = str(uuid.uuid4())
+    
+    # Create directory for this job
+    job_dir = TEMP_DIR / process_id
+    job_dir.mkdir(exist_ok=True)
+    
+    # Save file
+    file_path = job_dir / file.filename
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    
+    # Store job info
+    jobs[process_id] = {
+        "status": "uploaded",
+        "file_path": str(file_path),
+        "original_filename": file.filename,
+        "model_size": model_size,
+        "summary_method": summary_method,
+        "user_id": current_user.id  # Asociar con el usuario actual
+    }
+    
+    # Process in background
+    if background_tasks:
+        background_tasks.add_task(process_audio_file, process_id)
+    else:
+        # For testing without background tasks
+        await process_audio_file(process_id)
         
-        # Create a directory for this job
-        job_dir = TEMP_DIR / process_id
-        job_dir.mkdir(exist_ok=True)
-        
-        # Save the uploaded file
-        temp_file_path = job_dir / file.filename
-        logger.info(f"Subiendo archivo (upload_file): {file.filename}")
-        logger.info(f"Ruta temporal completa (upload_file): {temp_file_path}")
-        
-        # Save the uploaded file in chunks
-        with open(temp_file_path, "wb") as buffer:
-            chunk_size = 1024 * 1024  # 1MB chunks
-            while True:
-                chunk = await file.read(chunk_size)
-                if not chunk:
-                    break
-                buffer.write(chunk)
-        
-        logger.info(f"Archivo guardado exitosamente en (upload_file): {temp_file_path}")
-        
-        # Initialize job status
-        jobs[process_id] = {
-            "status": "processing_audio",
-            "file_path": str(temp_file_path),
-            "original_filename": file.filename,  
-            "model_size": model_size,
-            "summary_method": summary_method,
-            "error": None,
-            "results": {}
-        }
-        
-        logger.info(f"Job inicializado (upload_file): {jobs[process_id]}")
-        
-        # Process the audio file in the background
-        if background_tasks:
-            background_tasks.add_task(process_audio_file, process_id)
-        else:
-            # For testing, process synchronously
-            await process_audio_file(process_id)
-        
-        return {
-            "process_id": process_id,
-            "message": "Audio file uploaded successfully. Processing..."
-        }
-        
-    except Exception as e:
-        logger.error(f"Error processing upload: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error processing upload: {str(e)}")
+        # Guardar la transcripción en la base de datos cuando esté completa
+        if jobs[process_id]["status"] == "completed":
+            # Crear entrada en la base de datos
+            db_transcription = DBTranscription(
+                title=f"Transcripción de {file.filename}",
+                original_filename=file.filename,
+                file_path=str(file_path),
+                content=jobs[process_id]["results"]["transcription"],
+                user_id=current_user.id
+            )
+            db.add(db_transcription)
+            db.commit()
+    
+    return {"status": "processing", "job_id": process_id}
 
 
 @app.get("/status/{process_id}")
@@ -225,7 +241,8 @@ async def get_status(process_id: str):
     
     return JobStatus(
         status=job["status"],
-        error=job["error"]
+        error=job.get("error"),  # Usar .get() para manejar el caso donde error no existe
+        job_id=process_id
     )
 
 
@@ -345,38 +362,62 @@ async def process_audio_file_simple(process_id: str):
         model_size = job["model_size"]
         
         try:
-            logger.info(f"Processing audio file: {file_path}")
-            processed_file = audio_processor.process_audio(file_path)
-            
-            job["status"] = "transcribing"
-            
-            logger.info(f"Transcribing audio with model: {model_size}")
+            # Initialize transcriber with the specified model
             transcriber = Transcriber(model_size=model_size)
             
-            logger.info(f"Transcribing audio file: {processed_file}")
-            transcription = transcriber.transcribe(processed_file)
+            # Update status
+            job["status"] = "transcribing"
             
-            job["results"]["transcription"] = transcription
-                
+            # Transcribe audio
+            transcription = transcriber.transcribe(file_path)
+            
+            # Store results
+            job["results"] = {
+                "transcription": transcription,
+            }
+            
+            # Update status
             job["status"] = "completed"
             
-            job_dir = TEMP_DIR / process_id
-            txt_path = job_dir / "transcription.txt"
-            with open(txt_path, "w", encoding="utf-8") as f:
-                f.write(transcription)
-            
-            logger.info(f"Completed processing for {process_id}")
+            # Guardar en la base de datos si el job tiene un usuario asociado
+            if "user_id" in job and job["user_id"]:
+                try:
+                    # Crear sesión de base de datos
+                    db = SessionLocal()
+                    
+                    # Verificar si ya existe una transcripción con este process_id
+                    existing = db.query(DBTranscription).filter(
+                        DBTranscription.file_path == file_path
+                    ).first()
+                    
+                    if not existing:
+                        # Crear entrada en la base de datos
+                        db_transcription = DBTranscription(
+                            title=f"Transcripción de {Path(file_path).name}",
+                            original_filename=job.get("original_filename", Path(file_path).name),
+                            file_path=file_path,
+                            content=transcription,
+                            user_id=job["user_id"]
+                        )
+                        db.add(db_transcription)
+                        db.commit()
+                    
+                except Exception as db_error:
+                    logger.error(f"Error guardando transcripción en la base de datos: {str(db_error)}")
+                finally:
+                    db.close()
             
         except Exception as e:
-            logger.error(f"Error processing audio: {str(e)}")
+            # Update status to error
             job["status"] = "error"
-            job["error"] = f"Error processing audio: {str(e)}"
-            raise
+            job["error"] = str(e)
+            logger.error(f"Error transcribing audio: {str(e)}")
             
     except Exception as e:
-        logger.error(f"Unhandled error in process_audio_file: {str(e)}")
+        # Update status to error
         job["status"] = "error"
-        job["error"] = f"Unhandled error: {str(e)}"
+        job["error"] = str(e)
+        logger.error(f"Error processing audio file: {str(e)}")
 
 
 async def process_audio_file(process_id: str):
@@ -396,50 +437,78 @@ async def process_audio_file(process_id: str):
         job["status"] = "processing_audio"
         
         file_path = job["file_path"]
-        
         model_size = job["model_size"]
         summary_method = job["summary_method"]
         
         try:
-            logger.info(f"Processing audio file: {file_path}")
-            processed_file = audio_processor.process_audio(file_path)
-            
-            job["status"] = "transcribing"
-            
-            logger.info(f"Transcribing audio with model: {model_size}")
+            # Initialize transcriber with the specified model
             transcriber = Transcriber(model_size=model_size)
             
-            logger.info(f"Transcribing audio file: {processed_file}")
-            transcription = transcriber.transcribe(processed_file)
+            # Update status
+            job["status"] = "transcribing"
             
-            job["results"]["transcription"] = transcription
+            # Transcribe audio
+            transcription = transcriber.transcribe(file_path)
             
+            # Generate summaries
             job["status"] = "summarizing"
             
-            if summary_method:
-                logger.info(f"Generating summaries with method: {summary_method}")
-                
-                job["results"]["summaries"] = {}
-                
+            # Generate summaries using the specified method
+            short_summary, key_points, action_items = transcriber.generate_summaries(
+                transcription,
+                method=summary_method
+            )
+            
+            # Store results
+            job["results"] = {
+                "transcription": transcription,
+                "short_summary": short_summary,
+                "key_points": key_points,
+                "action_items": action_items
+            }
+            
+            # Update status
             job["status"] = "completed"
             
-            job_dir = TEMP_DIR / process_id
-            txt_path = job_dir / "transcription.txt"
-            with open(txt_path, "w", encoding="utf-8") as f:
-                f.write(transcription)
-            
-            logger.info(f"Completed processing for {process_id}")
+            # Guardar en la base de datos si el job tiene un usuario asociado
+            if "user_id" in job and job["user_id"]:
+                try:
+                    # Crear sesión de base de datos
+                    db = SessionLocal()
+                    
+                    # Verificar si ya existe una transcripción con este process_id
+                    existing = db.query(DBTranscription).filter(
+                        DBTranscription.file_path == file_path
+                    ).first()
+                    
+                    if not existing:
+                        # Crear entrada en la base de datos con información adicional
+                        db_transcription = DBTranscription(
+                            title=f"Transcripción de {Path(file_path).name}",
+                            original_filename=job.get("original_filename", Path(file_path).name),
+                            file_path=file_path,
+                            content=transcription,
+                            user_id=job["user_id"]
+                        )
+                        db.add(db_transcription)
+                        db.commit()
+                    
+                except Exception as db_error:
+                    logger.error(f"Error guardando transcripción en la base de datos: {str(db_error)}")
+                finally:
+                    db.close()
             
         except Exception as e:
-            logger.error(f"Error processing audio: {str(e)}")
+            # Update status to error
             job["status"] = "error"
-            job["error"] = f"Error processing audio: {str(e)}"
-            raise
+            job["error"] = str(e)
+            logger.error(f"Error transcribing audio: {str(e)}")
             
     except Exception as e:
-        logger.error(f"Unhandled error in process_audio_file: {str(e)}")
+        # Update status to error
         job["status"] = "error"
-        job["error"] = f"Unhandled error: {str(e)}"
+        job["error"] = str(e)
+        logger.error(f"Error processing audio file: {str(e)}")
 
 
 def generate_pdf(transcription, short_summary, key_points, action_items, output_path):

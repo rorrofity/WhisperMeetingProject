@@ -29,6 +29,7 @@ function AppContent() {
   const [transcription, setTranscription] = useState(null);
   const [originalFilename, setOriginalFilename] = useState(null); // Guardar el nombre original del archivo
   const [showHistory, setShowHistory] = useState(false);
+  const [selectedTranscriptionTitle, setSelectedTranscriptionTitle] = useState(null);
   
   const { currentUser, logout, token } = useAuth();
   const filePondRef = useRef(null);
@@ -172,9 +173,59 @@ function AppContent() {
 
   // Function to handle file download
   const handleDownload = async () => {
-    if (!processId) return;
+    // Si hay transcripción en el estado, podemos descargarla directamente sin hacer petición al servidor
+    if (transcription) {
+      console.log('Descargando transcripción desde el estado local');
+      try {
+        // Crear un blob con el contenido de la transcripción
+        const blob = new Blob([transcription], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        
+        // Generar un nombre de archivo basado en diferentes fuentes
+        let filename;
+        
+        // Si tenemos un título de transcripción del historial, lo usamos primero
+        if (selectedTranscriptionTitle) {
+          filename = `${selectedTranscriptionTitle}.txt`;
+          console.log(`Usando título del historial: ${filename}`);
+        }
+        // Si tenemos el nombre original del archivo subido, lo usamos
+        else if (originalFilename) {
+          const nameWithoutExt = originalFilename.split('.').slice(0, -1).join('.');
+          filename = nameWithoutExt ? `${nameWithoutExt}_transcripcion.txt` : `${originalFilename}_transcripcion.txt`;
+          console.log(`Usando nombre de archivo original: ${filename}`);
+        }
+        // Como último recurso, usamos la fecha actual
+        else {
+          filename = `transcripcion_${new Date().toISOString().slice(0, 10)}.txt`;
+          console.log(`Usando nombre genérico con fecha: ${filename}`);
+        }
+        
+        // Crear un enlace y hacer clic en él para descargar
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        
+        // Limpiar
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(link);
+        return;
+      } catch (error) {
+        console.error('Error al crear archivo para descarga:', error);
+      }
+    }
+    
+    // Si no hay transcripción en el estado o falló la creación del blob, intentamos descargar desde el servidor
+    if (!processId) {
+      console.error('No hay un ID de proceso o transcripción para descargar');
+      setError('No se puede descargar: falta el identificador de la transcripción');
+      return;
+    }
     
     try {
+      console.log(`Intentando descargar transcripción con ID: ${processId} desde el servidor`);
       const response = await axios.get(
         `http://localhost:8000/download/${processId}?format=txt`, 
         { 
@@ -220,6 +271,9 @@ function AppContent() {
 
   const handleSelectHistoryTranscription = (selectedTranscription) => {
     setTranscription(selectedTranscription.content);
+    setSelectedTranscriptionTitle(selectedTranscription.title);
+    // Guardar el ID de la transcripción seleccionada del historial
+    setProcessId(selectedTranscription.id);
     setShowHistory(false);
   };
 
@@ -227,6 +281,7 @@ function AppContent() {
     setTranscription(null);
     setFile(null);
     setProcessId(null);
+    setSelectedTranscriptionTitle(null);
     if (filePondRef.current) {
       filePondRef.current.removeFiles();
     }
@@ -383,6 +438,7 @@ function AppContent() {
             {transcription && (
               <TranscriptionView 
                 transcription={transcription} 
+                title={selectedTranscriptionTitle}
                 onDownload={handleDownload} 
               />
             )}

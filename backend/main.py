@@ -24,8 +24,9 @@ from backend.models.models import User, Transcription as DBTranscription
 from backend.auth.jwt import get_current_active_user
 from backend.routers import users, transcriptions
 
-# Load environment variables
-load_dotenv()
+# Load environment variables with explicit path
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 # Configure logging
 logging.basicConfig(

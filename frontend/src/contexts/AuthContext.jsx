@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
   
-  // Configurar axios para usar el token en todas las solicitudes
+  // Configurar axios para usar el token en todas las solicitudes y manejar errores de autenticación
   useEffect(() => {
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -24,7 +24,26 @@ export const AuthProvider = ({ children }) => {
       delete axios.defaults.headers.common['Authorization'];
       setCurrentUser(null);
     }
+    
+    // Configurar interceptor para manejar errores de autenticación
+    const interceptorId = axios.interceptors.response.use(
+      response => response,
+      error => {
+        // Si obtenemos un error 401 (No autorizado), cerramos la sesión automáticamente
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          console.log('Sesión expirada o token inválido. Redirigiendo a inicio de sesión...');
+          logout();
+        }
+        return Promise.reject(error);
+      }
+    );
+    
     setLoading(false);
+    
+    // Limpiar el interceptor al desmontar
+    return () => {
+      axios.interceptors.response.eject(interceptorId);
+    };
   }, [token]);
   
   // Función para obtener información del usuario

@@ -4,8 +4,9 @@ from pathlib import Path
 from deepgram import DeepgramClient, PrerecordedOptions
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables with explicit path
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 logger = logging.getLogger(__name__)
 

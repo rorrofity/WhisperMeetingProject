@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FiRefreshCw, FiFileText, FiTrash2, FiAlertCircle } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 
 const TranscriptionHistory = ({ onSelectTranscription }) => {
   const [transcriptions, setTranscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
   
   const fetchTranscriptions = async () => {
     try {
@@ -24,7 +25,7 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
       
       console.log('Haciendo solicitud con token:', token.substring(0, 15) + '...');
       
-      const response = await axios.get('http://localhost:8000/transcriptions/', {
+      const response = await axios.get(`${API_URL}/transcriptions/`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -47,20 +48,44 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
   
   // Cargar transcripciones al montar el componente
   useEffect(() => {
+    const fetchTranscriptions = async () => {
+      try {
+        setLoading(true);
+        
+        const response = await axios.get(`${API_URL}/transcriptions/`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        setTranscriptions(response.data);
+      } catch (error) {
+        console.error('Error al cargar transcripciones:', error);
+        
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          logout();
+        } else {
+          setError('Error al cargar las transcripciones');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
     if (token) {
       fetchTranscriptions();
     }
-  }, [token]);
-  
+  }, [token, logout]);
+
   const handleDelete = async (id) => {
     if (!window.confirm('¿Estás seguro de que deseas eliminar esta transcripción?')) {
       return;
     }
     
     try {
-      await axios.delete(`http://localhost:8000/transcriptions/${id}`, {
+      await axios.delete(`${API_URL}/transcriptions/${id}`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       
@@ -68,7 +93,12 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
       setTranscriptions(transcriptions.filter(t => t.id !== id));
     } catch (error) {
       console.error('Error al eliminar la transcripción:', error);
-      alert('No se pudo eliminar la transcripción');
+      
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        logout();
+      } else {
+        setError('Error al eliminar la transcripción');
+      }
     }
   };
   

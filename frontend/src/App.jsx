@@ -10,6 +10,7 @@ import Auth from './components/Auth';
 import Footer from './components/Footer';
 import { FiUpload, FiCpu, FiCheck, FiX, FiLogOut } from 'react-icons/fi';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { API_URL } from './config';
 
 // Register FilePond plugins
 registerPlugin(FilePondPluginFileValidateType);
@@ -63,7 +64,7 @@ function AppContent() {
       const formData = new FormData();
       formData.append('file', currentFile);
 
-      const response = await axios.post('http://localhost:8000/upload-file/', formData, {
+      const response = await axios.post(`${API_URL}/upload-file/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
@@ -124,7 +125,7 @@ function AppContent() {
           }
 
           console.log(`Consultando estado del proceso: ${jobId}`);
-          const statusResponse = await axios.get(`http://localhost:8000/status/${jobId}`, {
+          const statusResponse = await axios.get(`${API_URL}/status/${jobId}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -145,7 +146,7 @@ function AppContent() {
               setProgressMessage('¡Transcripción completada!');
               setProgress(100);
                 
-              const resultsResponse = await axios.get(`http://localhost:8000/results/${jobId}`);
+              const resultsResponse = await axios.get(`${API_URL}/results/${jobId}`);
                 
               setTranscription(resultsResponse.data.transcription);
               setProcessing(false);
@@ -226,15 +227,12 @@ function AppContent() {
     
     try {
       console.log(`Intentando descargar transcripción con ID: ${processId} desde el servidor`);
-      const response = await axios.get(
-        `http://localhost:8000/download/${processId}?format=txt`, 
-        { 
-          responseType: 'blob',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+      const response = await axios.get(`${API_URL}/download/${processId}?format=txt`, { 
+        responseType: 'blob',
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
-      );
+      });
       
       let filename = '';
       const contentDisposition = response.headers['content-disposition'];

@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 // Crear el contexto de autenticación
 const AuthContext = createContext();
@@ -72,7 +73,7 @@ export const AuthProvider = ({ children }) => {
       formData.append('username', username);
       formData.append('password', password);
       
-      const response = await axios.post('http://localhost:8000/users/token', formData);
+      const response = await axios.post(`${API_URL}/users/token`, formData);
       const { access_token } = response.data;
       
       localStorage.setItem('token', access_token);
@@ -87,7 +88,7 @@ export const AuthProvider = ({ children }) => {
   // Función para registrarse
   const register = async (username, email, password) => {
     try {
-      const response = await axios.post('http://localhost:8000/users/register', {
+      const response = await axios.post(`${API_URL}/users/register`, {
         username,
         email,
         password

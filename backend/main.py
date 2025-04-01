@@ -13,16 +13,16 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 
-# Módulos internos de la aplicación - Corregimos las rutas para importar desde el directorio raíz
-from backend.utils.audio_processor import AudioProcessor
-from backend.utils.transcriber import Transcriber
+# Módulos internos de la aplicación - Modificamos las importaciones para que sean relativas
+from utils.audio_processor import AudioProcessor
+from utils.transcriber import Transcriber
 
 # Importar nuevos módulos para autenticación y base de datos
-from backend.database.connection import get_db, SessionLocal
-from backend.database.init_db import init_db
-from backend.models.models import User, Transcription as DBTranscription
-from backend.auth.jwt import get_current_active_user
-from backend.routers import users, transcriptions
+from database.connection import get_db, SessionLocal
+from database.init_db import init_db
+from models.models import User, Transcription as DBTranscription
+from auth.jwt import get_current_active_user
+from routers import users, transcriptions
 
 # Load environment variables with explicit path
 env_path = Path(__file__).parent / '.env'
@@ -70,18 +70,15 @@ init_db()
 # Store job status and results
 jobs = {}  # type: Dict[str, Dict[str, Any]]
 
-
 class JobStatus(BaseModel):
     status: str
     error: Optional[str] = None
     job_id: Optional[str] = None
 
-
 @app.get("/")
 async def root():
     """Root endpoint to check API status."""
     return {"message": "Whisper Meeting Transcriber API is running"}
-
 
 @app.post("/upload-file/", response_model=JobStatus)
 async def upload_file_simple(
@@ -150,7 +147,6 @@ async def upload_file_simple(
     
     logger.info(f"Enviando respuesta con process_id: {process_id}")
     return {"status": "processing", "job_id": process_id}
-
 
 @app.post("/upload/", response_model=JobStatus)
 async def upload_file(
@@ -223,7 +219,6 @@ async def upload_file(
     
     return {"status": "processing", "job_id": process_id}
 
-
 @app.get("/status/{process_id}")
 async def get_status(process_id: str):
     """
@@ -246,7 +241,6 @@ async def get_status(process_id: str):
         job_id=process_id
     )
 
-
 @app.get("/results/{process_id}")
 async def get_results(process_id: str):
     """
@@ -267,7 +261,6 @@ async def get_results(process_id: str):
         raise HTTPException(status_code=400, detail=f"Process {process_id} is not completed yet")
     
     return job["results"]
-
 
 @app.get("/download/{process_id}")
 async def download_results(process_id: str, format: str = "txt"):
@@ -341,7 +334,6 @@ async def download_results(process_id: str, format: str = "txt"):
         )
     else:
         raise HTTPException(status_code=400, detail="Invalid format. Use 'txt' or 'pdf'")
-
 
 async def process_audio_file_simple(process_id: str):
     """
@@ -419,7 +411,6 @@ async def process_audio_file_simple(process_id: str):
         job["status"] = "error"
         job["error"] = str(e)
         logger.error(f"Error processing audio file: {str(e)}")
-
 
 async def process_audio_file(process_id: str):
     """
@@ -511,7 +502,6 @@ async def process_audio_file(process_id: str):
         job["error"] = str(e)
         logger.error(f"Error processing audio file: {str(e)}")
 
-
 def generate_pdf(transcription, short_summary, key_points, action_items, output_path):
     """
     Generate a PDF report with the transcription and summaries.
@@ -580,7 +570,6 @@ def generate_pdf(transcription, short_summary, key_points, action_items, output_
     except Exception as e:
         logger.error(f"Error generating PDF: {str(e)}")
         raise
-
 
 if __name__ == "__main__":
     import uvicorn

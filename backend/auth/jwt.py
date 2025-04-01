@@ -7,10 +7,10 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from backend.models.schemas import TokenData
-from backend.models.models import User
-from backend.database.connection import get_db
-from backend.auth.utils import verify_password
+from ..models.schemas import TokenData
+from ..models.models import User
+from ..database.connection import get_db
+from .utils import verify_password
 
 # Configuración para JWT
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "YOUR_SECRET_KEY")  # Obtiene la clave de variable de entorno o usa una por defecto

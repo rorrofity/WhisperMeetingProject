@@ -1,4 +1,4 @@
-from connection import engine, Base
+from .connection import engine, Base
 from ..models.models import User, Transcription
 
 def init_db():

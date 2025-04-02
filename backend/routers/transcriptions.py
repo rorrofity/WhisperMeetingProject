@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from backend.database.connection import get_db
-from backend.models.models import Transcription, User
-from backend.models.schemas import Transcription as TranscriptionSchema, TranscriptionCreate
-from backend.auth.jwt import get_current_active_user
+from database.connection import get_db
+from models.models import Transcription, User
+from models.schemas import Transcription as TranscriptionSchema, TranscriptionCreate
+from auth.jwt import get_current_active_user
 
 router = APIRouter(
     prefix="/transcriptions",

@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Form, HTTPException, Depends
+from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Form, HTTPException, Depends, APIRouter
 from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -38,6 +38,9 @@ logger = logging.getLogger(__name__)
 # FastAPI app
 app = FastAPI(title="Whisper Meeting Transcriber")
 
+# Crear el router principal para la API
+api_router = APIRouter(prefix="/api")
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -47,9 +50,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Incluir los routers para usuarios y transcripciones
-app.include_router(users.router)
-app.include_router(transcriptions.router)
+# Incluir los routers para usuarios y transcripciones DENTRO del api_router
+api_router.include_router(users.router)
+api_router.include_router(transcriptions.router)
+
+# Incluir el router principal en la aplicación FastAPI
+app.include_router(api_router)
 
 # Create directories
 TEMP_DIR = Path("temp")
@@ -80,7 +86,7 @@ async def root():
     """Root endpoint to check API status."""
     return {"message": "Whisper Meeting Transcriber API is running"}
 
-@app.post("/upload-file/", response_model=JobStatus)
+@api_router.post("/upload-file/", response_model=JobStatus)
 async def upload_file_simple(
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,
@@ -148,7 +154,7 @@ async def upload_file_simple(
     logger.info(f"Enviando respuesta con process_id: {process_id}")
     return {"status": "processing", "job_id": process_id}
 
-@app.post("/upload/", response_model=JobStatus)
+@api_router.post("/upload/", response_model=JobStatus)
 async def upload_file(
     file: UploadFile = File(...),
     model_size: str = Form(default_model),
@@ -219,7 +225,7 @@ async def upload_file(
     
     return {"status": "processing", "job_id": process_id}
 
-@app.get("/status/{process_id}")
+@api_router.get("/status/{process_id}")
 async def get_status(process_id: str):
     """
     Get the status of a transcription job.
@@ -241,7 +247,7 @@ async def get_status(process_id: str):
         job_id=process_id
     )
 
-@app.get("/results/{process_id}")
+@api_router.get("/results/{process_id}")
 async def get_results(process_id: str):
     """
     Get the results of a completed transcription job.
@@ -262,7 +268,7 @@ async def get_results(process_id: str):
     
     return job["results"]
 
-@app.get("/download/{process_id}")
+@api_router.get("/download/{process_id}")
 async def download_results(process_id: str, format: str = "txt"):
     """
     Download the results of a completed transcription job.

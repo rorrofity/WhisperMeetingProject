@@ -89,6 +89,22 @@ ssh -p 2222 root@134.199.218.48 "journalctl -u whisper-backend -n 100"
 ssh -p 2222 root@134.199.218.48 "tail -n 100 /var/log/nginx/error.log"
 ```
 
+## Solución de Problemas
+
+### Errores de Importación de Módulos Python
+
+Si encuentras errores del tipo `ModuleNotFoundError: No module named 'backend'` o similares, es posible que necesites ajustar la configuración del servicio systemd:
+
+```bash
+# Verificar que PYTHONPATH esté configurado correctamente
+ssh -p 2222 root@134.199.218.48 "grep PYTHONPATH /etc/systemd/system/whisper-backend.service"
+
+# Si no está presente, actualizar el servicio
+ssh -p 2222 root@134.199.218.48 "sed -i '/Environment=\"PATH/a Environment=\"PYTHONPATH=\/var\/www\/whisper-meeting\/backend\"' /etc/systemd/system/whisper-backend.service && systemctl daemon-reload && systemctl restart whisper-backend"
+```
+
+La variable `PYTHONPATH` es crítica para que Python pueda encontrar módulos en el proyecto, permitiendo tanto importaciones absolutas como relativas.
+
 ## Actualizaciones de Seguridad
 
 ### Actualizar el Sistema

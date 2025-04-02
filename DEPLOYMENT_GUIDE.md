@@ -63,6 +63,7 @@ User=root
 Group=www-data
 WorkingDirectory=/var/www/whisper-meeting/backend
 Environment="PATH=/var/www/whisper-meeting/backend/venv/bin"
+Environment="PYTHONPATH=/var/www/whisper-meeting/backend"
 ExecStart=/var/www/whisper-meeting/backend/venv/bin/gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
 
 [Install]
@@ -208,4 +209,3 @@ nano /var/www/whisper-meeting/backend/.env
 # Crear un nuevo usuario
 cd /var/www/whisper-meeting
 python initialize_app.py --create-user --username nuevouser --email tu@ejemplo.com --password NuevaContraseña123!
-```

@@ -142,6 +142,18 @@ WhisperMeetingProject/
 6. Esperar a que se complete la transcripción
 7. Ver y descargar los resultados
 
+## Despliegue en Producción
+
+Para desplegar esta aplicación en un servidor de producción, sigue los pasos detallados en [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
+
+### Consideraciones Importantes para el Despliegue
+
+- Asegúrate de que tu archivo `.env` contenga todas las variables necesarias
+- Sigue al pie de la letra la configuración del servicio systemd, incluyendo la variable `PYTHONPATH`
+- Ejecuta correctamente los pasos de inicialización de la base de datos
+
+Para el mantenimiento continuo del sistema desplegado, consulta [MAINTENANCE_GUIDE.md](MAINTENANCE_GUIDE.md).
+
 ## Sistema de Autenticación
 
 La aplicación utiliza un sistema de autenticación basado en tokens JWT (JSON Web Tokens):

@@ -38,9 +38,6 @@ logger = logging.getLogger(__name__)
 # FastAPI app
 app = FastAPI(title="Whisper Meeting Transcriber")
 
-# Crear el router principal para la API
-api_router = APIRouter(prefix="/api")
-
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -50,12 +47,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Incluir los routers para usuarios y transcripciones DENTRO del api_router
-api_router.include_router(users.router)
-api_router.include_router(transcriptions.router)
+# Incluir los routers para usuarios y transcripciones con el prefijo /api
+app.include_router(users.router, prefix="/api")
+app.include_router(transcriptions.router, prefix="/api")
 
-# Incluir el router principal en la aplicación FastAPI
-app.include_router(api_router)
+# Crear el router principal para otras rutas de la API principal
+api_router = APIRouter(prefix="/api")
 
 # Create directories
 TEMP_DIR = Path("temp")
@@ -340,6 +337,9 @@ async def download_results(process_id: str, format: str = "txt"):
         )
     else:
         raise HTTPException(status_code=400, detail="Invalid format. Use 'txt' or 'pdf'")
+
+# Incluir el router API principal a la app
+app.include_router(api_router)
 
 async def process_audio_file_simple(process_id: str):
     """

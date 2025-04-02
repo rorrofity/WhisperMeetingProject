@@ -227,6 +227,17 @@ El sistema proporciona una API REST para integraciones. Los endpoints principale
 
 Ver [API_REFERENCE.md](./API_REFERENCE.md) para documentación completa.
 
+## Consideraciones de Desarrollo Importantes
+
+### Reglas de Importación
+Para asegurar que la aplicación funcione correctamente tanto en desarrollo como en producción, sigue estas reglas para las importaciones de Python en el backend:
+
+- **Importaciones absolutas sin prefijo "backend"**: Usa `from models.models import User` en lugar de `from backend.models.models import User`
+- **Evita importaciones relativas con ".."**: No uses `from ..database.connection import get_db`
+- **Importaciones relativas del mismo directorio**: Puedes usar `from .utils import verify_password` para importar del mismo directorio
+
+Esta configuración funciona con la variable `PYTHONPATH=/var/www/whisper-meeting/backend` establecida en el servicio systemd del servidor de producción.
+
 ## Personalización y Extensión
 
 ### Frontend

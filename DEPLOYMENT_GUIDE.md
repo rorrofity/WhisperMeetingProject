@@ -171,6 +171,15 @@ systemctl restart nginx
 systemctl status nginx  # Verificar estado
 ```
 
+## Configuración de PYTHONPATH para Backend
+
+```bash
+sudo sed -i '/ExecStart/i Environment="PYTHONPATH=/var/www/whisper-meeting/backend"' /etc/systemd/system/whisper-backend.service
+sudo systemctl daemon-reload
+```
+
+> **IMPORTANTE**: La variable PYTHONPATH es crítica para que el backend funcione. Esta configuración permite que todas las importaciones absolutas sin prefijo "backend" funcionen correctamente. Asegúrate de que todos los archivos Python sigan las reglas de importación explicadas en el README.md.
+
 ## Verificar Logs
 
 Si algo no funciona correctamente, revisa los logs:

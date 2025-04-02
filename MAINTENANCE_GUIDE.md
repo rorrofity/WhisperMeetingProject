@@ -105,6 +105,42 @@ ssh -p 2222 root@134.199.218.48 "sed -i '/Environment=\"PATH/a Environment=\"PYT
 
 La variable `PYTHONPATH` es crítica para que Python pueda encontrar módulos en el proyecto, permitiendo tanto importaciones absolutas como relativas.
 
+## Problemas Comunes y Soluciones
+
+### Error 502 Bad Gateway en el inicio de sesión
+Si aparece un error 502 Bad Gateway al intentar iniciar sesión, es probable que haya un problema con las importaciones en Python. 
+
+**Solución**: 
+1. Asegúrate de que todos los archivos Python usen importaciones absolutas sin el prefijo "backend". 
+2. Nunca uses importaciones relativas con ".." en este proyecto cuando se despliega con Gunicorn.
+3. El patrón correcto para importaciones es:
+   ```python
+   # Correcto
+   from models.models import User
+   from database.connection import get_db
+   
+   # Incorrecto - no usar
+   from backend.models.models import User
+   from ..database.connection import get_db
+   ```
+4. Si necesitas hacer cambios, actualiza el servidor con:
+   ```
+   ssh -p 2222 root@134.199.218.48 "cd /var/www/whisper-meeting && git pull && systemctl restart whisper-backend"
+   ```
+
+### Conflictos con PYTHONPATH
+Si encuentras errores del tipo `ModuleNotFoundError: No module named 'backend'` o similares, es posible que necesites ajustar la configuración del servicio systemd:
+
+```bash
+# Verificar que PYTHONPATH esté configurado correctamente
+ssh -p 2222 root@134.199.218.48 "grep PYTHONPATH /etc/systemd/system/whisper-backend.service"
+
+# Si no está presente, actualizar el servicio
+ssh -p 2222 root@134.199.218.48 "sed -i '/Environment=\"PATH/a Environment=\"PYTHONPATH=\/var\/www\/whisper-meeting\/backend\"' /etc/systemd/system/whisper-backend.service && systemctl daemon-reload && systemctl restart whisper-backend"
+```
+
+La variable `PYTHONPATH` es crítica para que Python pueda encontrar módulos en el proyecto, permitiendo tanto importaciones absolutas como relativas.
+
 ## Actualizaciones de Seguridad
 
 ### Actualizar el Sistema

@@ -24,6 +24,13 @@ cd /var/www/whisper-meeting/frontend
 npm install
 npm run build
 
+# Actualizar configuración de Nginx
+echo "=== Actualizando configuración de Nginx ==="
+if [ -d "/var/www/whisper-meeting/nginx/conf" ]; then
+  sudo cp /var/www/whisper-meeting/nginx/conf/whisper-meeting /etc/nginx/sites-available/whisper-meeting
+  sudo nginx -t && sudo systemctl reload nginx
+fi
+
 # Reiniciar servicios
 systemctl restart whisper-backend
 systemctl restart nginx

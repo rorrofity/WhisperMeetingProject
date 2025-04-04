@@ -266,10 +266,19 @@ async def get_status(process_id: str):
         job_id=process_id
     )
 
-@app.get("/api/status/{process_id}")  # Ruta duplicada con prefijo /api explícito
-async def get_status_with_prefix(process_id: str):
+@app.get("/api/status/{process_id}")
+async def get_status_with_api_prefix(process_id: str):
     """Duplicate endpoint for status with explicit /api prefix."""
-    return await get_status(process_id)  # Usamos await para esperar la coroutine
+    if process_id not in jobs:
+        raise HTTPException(status_code=404, detail=f"Process {process_id} not found")
+    
+    job = jobs[process_id]
+    
+    return JobStatus(
+        status=job["status"],
+        error=job.get("error"),
+        job_id=process_id
+    )
 
 @app.get("/results/{process_id}")
 async def get_results(process_id: str):
@@ -293,9 +302,17 @@ async def get_results(process_id: str):
     return job["results"]
 
 @app.get("/api/results/{process_id}")
-async def get_results_with_prefix(process_id: str):
+async def get_results_with_api_prefix(process_id: str):
     """Duplicate endpoint for results with explicit /api prefix."""
-    return await get_results(process_id)  # Usamos await para esperar la coroutine
+    if process_id not in jobs:
+        raise HTTPException(status_code=404, detail=f"Process {process_id} not found")
+    
+    job = jobs[process_id]
+    
+    if job["status"] != "completed":
+        raise HTTPException(status_code=400, detail=f"Process {process_id} is not completed yet")
+    
+    return job["results"]
 
 @app.get("/download/{process_id}")
 async def download_results(process_id: str, format: str = "txt"):

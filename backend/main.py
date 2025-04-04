@@ -162,17 +162,6 @@ async def upload_file_with_api_prefix(
     # Reutilizamos la lógica del endpoint original con await
     return await upload_file_simple(file, background_tasks, current_user, db)
 
-@app.post("/api/upload-file", response_model=JobStatus)
-async def upload_file_with_api_prefix_no_slash(
-    file: UploadFile = File(...),
-    background_tasks: BackgroundTasks = None,
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """Endpoint duplicado para carga de archivos sin barra final con prefijo /api."""
-    # Reutilizamos la lógica del endpoint original con await
-    return await upload_file_simple(file, background_tasks, current_user, db)
-
 @app.post("/upload/", response_model=JobStatus)
 async def upload_file(
     file: UploadFile = File(...),
@@ -269,16 +258,7 @@ async def get_status(process_id: str):
 @app.get("/api/status/{process_id}")
 async def get_status_with_api_prefix(process_id: str):
     """Duplicate endpoint for status with explicit /api prefix."""
-    if process_id not in jobs:
-        raise HTTPException(status_code=404, detail=f"Process {process_id} not found")
-    
-    job = jobs[process_id]
-    
-    return JobStatus(
-        status=job["status"],
-        error=job.get("error"),
-        job_id=process_id
-    )
+    return get_status(process_id)
 
 @app.get("/results/{process_id}")
 async def get_results(process_id: str):
@@ -304,15 +284,7 @@ async def get_results(process_id: str):
 @app.get("/api/results/{process_id}")
 async def get_results_with_api_prefix(process_id: str):
     """Duplicate endpoint for results with explicit /api prefix."""
-    if process_id not in jobs:
-        raise HTTPException(status_code=404, detail=f"Process {process_id} not found")
-    
-    job = jobs[process_id]
-    
-    if job["status"] != "completed":
-        raise HTTPException(status_code=400, detail=f"Process {process_id} is not completed yet")
-    
-    return job["results"]
+    return get_results(process_id)
 
 @app.get("/download/{process_id}")
 async def download_results(process_id: str, format: str = "txt"):

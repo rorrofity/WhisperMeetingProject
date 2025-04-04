@@ -267,6 +267,11 @@ async def get_results(process_id: str):
     
     return job["results"]
 
+@app.get("/api/results/{process_id}")  # Ruta duplicada con prefijo /api explícito
+async def get_results_with_prefix(process_id: str):
+    """Duplicate endpoint for results with explicit /api prefix."""
+    return get_results(process_id)  # Reutiliza la misma función
+
 @app.get("/download/{process_id}")
 async def download_results(process_id: str, format: str = "txt"):
     """

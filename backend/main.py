@@ -151,6 +151,17 @@ async def upload_file_simple(
     logger.info(f"Enviando respuesta con process_id: {process_id}")
     return {"status": "processing", "job_id": process_id}
 
+@app.post("/api/upload-file/", response_model=JobStatus)
+async def upload_file_with_api_prefix(
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Endpoint duplicado para carga de archivos con prefijo /api."""
+    # Reutilizamos la lógica del endpoint original
+    return await upload_file_simple(file, background_tasks, current_user, db)
+
 @app.post("/upload/", response_model=JobStatus)
 async def upload_file(
     file: UploadFile = File(...),

@@ -113,6 +113,10 @@ function AppContent() {
       setProgress(65);
       setProgressMessage('Archivo subido. Procesando audio...');
       
+      let statusCheckAttempts = 0;
+      const MAX_STATUS_CHECK_ATTEMPTS = 3;
+      let completedDetected = false;
+
       const statusInterval = setInterval(async () => {
         try {
           // Verificar que jobId exista y no sea undefined antes de consultar
@@ -124,6 +128,13 @@ function AppContent() {
             return;
           }
 
+          // Si ya detectamos que está completado, no hacemos más consultas
+          if (completedDetected) {
+            console.log('Transcripción ya completada, no se consultará más el estado');
+            clearInterval(statusInterval);
+            return;
+          }
+
           console.log(`Consultando estado del proceso: ${jobId}`);
           const statusResponse = await axios.get(`${API_URL}/status/${jobId}`, {
             headers: {
@@ -132,6 +143,9 @@ function AppContent() {
           });
           console.log('Estado del proceso:', statusResponse.data);
           const status = statusResponse.data.status;
+          
+          // Reiniciar contador de intentos cuando hay una respuesta exitosa
+          statusCheckAttempts = 0;
             
           switch(status) {
             case 'processing_audio':
@@ -145,12 +159,18 @@ function AppContent() {
             case 'completed':
               setProgressMessage('¡Transcripción completada!');
               setProgress(100);
+              completedDetected = true;
                 
-              const resultsResponse = await axios.get(`${API_URL}/results/${jobId}`);
+              try {
+                const resultsResponse = await axios.get(`${API_URL}/results/${jobId}`);
+                setTranscription(resultsResponse.data.transcription);
+              } catch (resultError) {
+                console.error('Error al obtener resultados:', resultError);
+                // Intentar obtener los resultados directamente de la base de datos a través del historial
+                setProgressMessage('Transcripción completada. Los resultados están disponibles en el historial.');
+              }
                 
-              setTranscription(resultsResponse.data.transcription);
               setProcessing(false);
-                
               clearInterval(statusInterval);
               break;
             case 'error':
@@ -162,6 +182,38 @@ function AppContent() {
             
         } catch (error) {
           console.error('Error al verificar estado:', error);
+          
+          // Incrementar contador de intentos fallidos
+          statusCheckAttempts++;
+          
+          // Si hay demasiados intentos fallidos consecutivos, verificar directamente en la base de datos
+          if (statusCheckAttempts >= MAX_STATUS_CHECK_ATTEMPTS) {
+            console.log(`Demasiados errores consecutivos (${statusCheckAttempts}). Verificando en la base de datos...`);
+            try {
+              // Verificar en el historial si la transcripción está completada
+              const historyResponse = await axios.get(`${API_URL}/transcriptions/user`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              });
+              
+              // Buscar si el job_id actual está en el historial y está completado
+              const transcriptionInHistory = historyResponse.data.find(
+                t => t.job_id === jobId && t.status === 'completed'
+              );
+              
+              if (transcriptionInHistory) {
+                console.log('Transcripción encontrada en el historial como completada');
+                setProgressMessage('¡Transcripción completada! Disponible en el historial.');
+                setProgress(100);
+                setProcessing(false);
+                completedDetected = true;
+                clearInterval(statusInterval);
+              }
+            } catch (historyError) {
+              console.error('Error al verificar el historial:', historyError);
+            }
+          }
         }
       }, 5000); // Verificar cada 5 segundos
 

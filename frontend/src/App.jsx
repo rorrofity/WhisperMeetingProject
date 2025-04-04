@@ -136,7 +136,7 @@ function AppContent() {
           }
 
           console.log(`Consultando estado del proceso: ${jobId}`);
-          const statusResponse = await axios.get(`${API_URL}/status/${jobId}`, {
+          const statusResponse = await axios.get(`${API_URL}/api/status/${jobId}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -162,7 +162,7 @@ function AppContent() {
               completedDetected = true;
                 
               try {
-                const resultsResponse = await axios.get(`${API_URL}/results/${jobId}`);
+                const resultsResponse = await axios.get(`${API_URL}/api/results/${jobId}`);
                 setTranscription(resultsResponse.data.transcription);
               } catch (resultError) {
                 console.error('Error al obtener resultados:', resultError);
@@ -191,7 +191,7 @@ function AppContent() {
             console.log(`Demasiados errores consecutivos (${statusCheckAttempts}). Verificando en la base de datos...`);
             try {
               // Verificar en el historial si la transcripción está completada
-              const historyResponse = await axios.get(`${API_URL}/transcriptions/user`, {
+              const historyResponse = await axios.get(`${API_URL}/api/transcriptions/user`, {
                 headers: {
                   'Authorization': `Bearer ${token}`
                 }

@@ -279,7 +279,13 @@ async def get_results(process_id: str):
     if job["status"] != "completed":
         raise HTTPException(status_code=400, detail=f"Process {process_id} is not completed yet")
     
-    return job["results"]
+    # Asegurarse de que el resultado incluya el campo 'transcription'
+    results = job["results"]
+    if isinstance(results, dict) and "transcription" not in results and "text" in results:
+        # Si el resultado tiene 'text' pero no 'transcription', adaptar la estructura
+        results = {"transcription": results["text"], **results}
+        
+    return results
 
 @app.get("/api/results/{process_id}")
 async def get_results_with_api_prefix(process_id: str):

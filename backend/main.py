@@ -151,7 +151,7 @@ async def upload_file_simple(
     logger.info(f"Enviando respuesta con process_id: {process_id}")
     return {"status": "processing", "job_id": process_id}
 
-@app.post("/api/upload-file/", response_model=JobStatus)
+@app.post("/api/upload-file", response_model=JobStatus)
 async def upload_file_with_api_prefix(
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,
@@ -159,6 +159,17 @@ async def upload_file_with_api_prefix(
     db: Session = Depends(get_db)
 ):
     """Endpoint duplicado para carga de archivos con prefijo /api."""
+    # Reutilizamos la lógica del endpoint original
+    return await upload_file_simple(file, background_tasks, current_user, db)
+
+@app.post("/api/upload-file", response_model=JobStatus)
+async def upload_file_with_api_prefix_no_slash(
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Endpoint duplicado para carga de archivos sin barra final con prefijo /api."""
     # Reutilizamos la lógica del endpoint original
     return await upload_file_simple(file, background_tasks, current_user, db)
 
@@ -378,6 +389,20 @@ def login_with_api_prefix(form_data: OAuth2PasswordRequestForm = Depends(), db: 
     )
     
     return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/api/transcriptions/user")
+def get_user_transcriptions_with_api_prefix(
+    skip: int = 0, 
+    limit: int = 100,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Endpoint duplicado para historial de transcripciones con prefijo /api."""
+    transcriptions = db.query(DBTranscription).filter(
+        DBTranscription.user_id == current_user.id
+    ).offset(skip).limit(limit).all()
+    
+    return transcriptions
 
 async def process_audio_file_simple(process_id: str):
     """

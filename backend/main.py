@@ -159,7 +159,7 @@ async def upload_file_with_api_prefix(
     db: Session = Depends(get_db)
 ):
     """Endpoint duplicado para carga de archivos con prefijo /api."""
-    # Reutilizamos la lógica del endpoint original
+    # Reutilizamos la lógica del endpoint original con await
     return await upload_file_simple(file, background_tasks, current_user, db)
 
 @app.post("/api/upload-file", response_model=JobStatus)
@@ -170,7 +170,7 @@ async def upload_file_with_api_prefix_no_slash(
     db: Session = Depends(get_db)
 ):
     """Endpoint duplicado para carga de archivos sin barra final con prefijo /api."""
-    # Reutilizamos la lógica del endpoint original
+    # Reutilizamos la lógica del endpoint original con await
     return await upload_file_simple(file, background_tasks, current_user, db)
 
 @app.post("/upload/", response_model=JobStatus)
@@ -269,7 +269,7 @@ async def get_status(process_id: str):
 @app.get("/api/status/{process_id}")  # Ruta duplicada con prefijo /api explícito
 async def get_status_with_prefix(process_id: str):
     """Duplicate endpoint for status with explicit /api prefix."""
-    return get_status(process_id)  # Reutiliza la misma función
+    return await get_status(process_id)  # Usamos await para esperar la coroutine
 
 @app.get("/results/{process_id}")
 async def get_results(process_id: str):
@@ -292,10 +292,10 @@ async def get_results(process_id: str):
     
     return job["results"]
 
-@app.get("/api/results/{process_id}")  # Ruta duplicada con prefijo /api explícito
+@app.get("/api/results/{process_id}")
 async def get_results_with_prefix(process_id: str):
     """Duplicate endpoint for results with explicit /api prefix."""
-    return get_results(process_id)  # Reutiliza la misma función
+    return await get_results(process_id)  # Usamos await para esperar la coroutine
 
 @app.get("/download/{process_id}")
 async def download_results(process_id: str, format: str = "txt"):
@@ -391,7 +391,7 @@ def login_with_api_prefix(form_data: OAuth2PasswordRequestForm = Depends(), db: 
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/api/transcriptions/user")
-def get_user_transcriptions_with_api_prefix(
+async def get_user_transcriptions_with_api_prefix(
     skip: int = 0, 
     limit: int = 100,
     current_user: User = Depends(get_current_active_user),

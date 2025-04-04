@@ -258,7 +258,7 @@ async def get_status(process_id: str):
 @app.get("/api/status/{process_id}")
 async def get_status_with_api_prefix(process_id: str):
     """Duplicate endpoint for status with explicit /api prefix."""
-    return get_status(process_id)
+    return await get_status(process_id)
 
 @app.get("/results/{process_id}")
 async def get_results(process_id: str):
@@ -284,7 +284,7 @@ async def get_results(process_id: str):
 @app.get("/api/results/{process_id}")
 async def get_results_with_api_prefix(process_id: str):
     """Duplicate endpoint for results with explicit /api prefix."""
-    return get_results(process_id)
+    return await get_results(process_id)
 
 @app.get("/download/{process_id}")
 async def download_results(process_id: str, format: str = "txt"):

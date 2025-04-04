@@ -25,7 +25,7 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
       
       console.log('Haciendo solicitud con token:', token.substring(0, 15) + '...');
       
-      const response = await axios.get(`${API_URL}/transcriptions/`, {
+      const response = await axios.get(`${API_URL}/transcriptions/user`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

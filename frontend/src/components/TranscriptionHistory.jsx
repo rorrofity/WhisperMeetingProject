@@ -52,7 +52,7 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
       try {
         setLoading(true);
         
-        const response = await axios.get(`${API_URL}/transcriptions/`, {
+        const response = await axios.get(`${API_URL}/transcriptions/user`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }

@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordRequestForm
 
 # Módulos internos de la aplicación - Modificamos las importaciones para que sean relativas
 from utils.audio_processor import AudioProcessor
@@ -21,8 +22,10 @@ from utils.transcriber import Transcriber
 from database.connection import get_db, SessionLocal
 from database.init_db import init_db
 from models.models import User, Transcription as DBTranscription
-from auth.jwt import get_current_active_user
+from auth.jwt import get_current_active_user, authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from routers import users, transcriptions
+from models.schemas import Token
+from datetime import timedelta
 
 # Load environment variables with explicit path
 env_path = Path(__file__).parent / '.env'
@@ -344,6 +347,26 @@ async def download_results(process_id: str, format: str = "txt"):
         )
     else:
         raise HTTPException(status_code=400, detail="Invalid format. Use 'txt' or 'pdf'")
+
+@app.post("/api/users/token", response_model=Token)
+def login_with_api_prefix(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """Endpoint duplicado para autenticación con prefijo /api."""
+    # Reutilizamos la lógica del endpoint original
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Crear token de acceso
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}
 
 async def process_audio_file_simple(process_id: str):
     """

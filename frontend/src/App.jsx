@@ -32,6 +32,7 @@ function AppContent() {
   const [showHistory, setShowHistory] = useState(false);
   const [selectedTranscriptionTitle, setSelectedTranscriptionTitle] = useState(null);
   const [success, setSuccess] = useState(false); // Estado para mostrar mensaje de éxito
+  const [showCompleted, setShowCompleted] = useState(false); // Estado para mostrar la vista de transcripción completada
   
   const { currentUser, logout, token } = useAuth();
   const filePondRef = useRef(null);
@@ -158,7 +159,7 @@ function AppContent() {
               setProgress(80);
               break;
             case 'completed':
-              setProgressMessage('¡Transcripción completada!');
+              setProgressMessage('Transcripción completada. Los resultados están disponibles en el historial.');
               setProgress(100);
               completedDetected = true;
                 
@@ -171,14 +172,16 @@ function AppContent() {
                 }
                 // Mostrar mensaje de éxito y ocultar el componente de carga
                 setProcessing(false);
-                // Agregamos un pequeño retraso para que la animación sea más visible
-                setTimeout(() => {
-                  setSuccess(true);  // Activar mensaje de éxito
-                }, 500);
+                // Activar mensaje de éxito inmediatamente
+                setSuccess(true);
+                
+                // Redirigir directamente a la vista de transcripción completada
+                setShowCompleted(true);
               } catch (resultError) {
                 console.error('Error al obtener resultados:', resultError);
                 // Intentar obtener los resultados directamente de la base de datos a través del historial
                 setProgressMessage('Transcripción completada. Los resultados están disponibles en el historial.');
+                setProcessing(false);
               }
                 
               clearInterval(statusInterval);
@@ -347,6 +350,7 @@ function AppContent() {
     setProgressMessage('');
     setError(null);
     setSuccess(false); // Reiniciar el estado de éxito
+    setShowCompleted(false); // Reiniciar la vista de transcripción completada
     setSelectedTranscriptionTitle(null);
     
     // Limpiar FilePond
@@ -503,7 +507,25 @@ function AppContent() {
               )}
             </div>
             
-            {transcription && (
+            {showCompleted && (
+              <>
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-4 flex items-center">
+                  <FiCheck className="text-green-500 mr-2" />
+                  Transcripción completada con éxito.
+                </div>
+                
+                <div className="mb-4">
+                  <button
+                    onClick={clearTranscription}
+                    className="text-primary-600 hover:text-primary-800 font-medium"
+                  >
+                    Iniciar nueva transcripción
+                  </button>
+                </div>
+              </>
+            )}
+            
+            {showCompleted && transcription && (
               <TranscriptionView 
                 transcription={transcription} 
                 title={selectedTranscriptionTitle}

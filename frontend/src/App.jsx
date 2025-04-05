@@ -488,7 +488,7 @@ function AppContent() {
                 </div>
               )}
               
-              {success && (
+              {success && !showCompleted && (
                 <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-4 flex items-center">
                   <FiCheck className="text-green-500 mr-2" />
                   Transcripción completada con éxito.

@@ -31,6 +31,7 @@ function AppContent() {
   const [originalFilename, setOriginalFilename] = useState(null); // Guardar el nombre original del archivo
   const [showHistory, setShowHistory] = useState(false);
   const [selectedTranscriptionTitle, setSelectedTranscriptionTitle] = useState(null);
+  const [success, setSuccess] = useState(false); // Estado para mostrar mensaje de éxito
   
   const { currentUser, logout, token } = useAuth();
   const filePondRef = useRef(null);
@@ -164,13 +165,22 @@ function AppContent() {
               try {
                 const resultsResponse = await axios.get(`${API_URL}/api/results/${jobId}`);
                 setTranscription(resultsResponse.data.transcription);
+                // Actualizar el título de la transcripción con el nombre del archivo
+                if (file) {
+                  setSelectedTranscriptionTitle(`Transcripción de ${file.name}`);
+                }
+                // Mostrar mensaje de éxito y ocultar el componente de carga
+                setProcessing(false);
+                // Agregamos un pequeño retraso para que la animación sea más visible
+                setTimeout(() => {
+                  setSuccess(true);  // Activar mensaje de éxito
+                }, 500);
               } catch (resultError) {
                 console.error('Error al obtener resultados:', resultError);
                 // Intentar obtener los resultados directamente de la base de datos a través del historial
                 setProgressMessage('Transcripción completada. Los resultados están disponibles en el historial.');
               }
                 
-              setProcessing(false);
               clearInterval(statusInterval);
               break;
             case 'error':
@@ -325,13 +335,21 @@ function AppContent() {
     // Guardar el ID de la transcripción seleccionada del historial
     setProcessId(selectedTranscription.id);
     setShowHistory(false);
+    // Mostrar mensaje de éxito al seleccionar una transcripción del historial
+    setSuccess(true);
   };
 
   const clearTranscription = () => {
     setTranscription(null);
     setFile(null);
     setProcessId(null);
+    setProgress(0);
+    setProgressMessage('');
+    setError(null);
+    setSuccess(false); // Reiniciar el estado de éxito
     setSelectedTranscriptionTitle(null);
+    
+    // Limpiar FilePond
     if (filePondRef.current) {
       filePondRef.current.removeFiles();
     }
@@ -466,7 +484,7 @@ function AppContent() {
                 </div>
               )}
               
-              {transcription && (
+              {success && (
                 <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-4 flex items-center">
                   <FiCheck className="text-green-500 mr-2" />
                   Transcripción completada con éxito.

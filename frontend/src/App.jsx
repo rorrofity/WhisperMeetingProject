@@ -512,125 +512,101 @@ function AppContent() {
         </div>
       </div>
       
-      <main className="flex-grow container mx-auto px-4 py-8">
+      <main className="container max-w-4xl mx-auto px-4 py-8 flex-grow">
         {showHistory ? (
           <TranscriptionHistory onSelectTranscription={handleSelectHistoryTranscription} />
         ) : (
           <>
-            {!transcription && !showCompleted && (
-              <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-                <h1 className="text-3xl font-bold text-gray-800 mb-6">Cargar Archivo de Audio</h1>
+            {transcription || showCompleted ? (
+              <>
+                {/* Mensaje de éxito verde */}
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-4 flex items-center">
+                  <FiCheck className="text-green-500 mr-2" />
+                  Transcripción completada con éxito.
+                </div>
                 
-                <div className="mb-6">
-                  <FilePond
-                    ref={filePondRef}
-                    allowFileTypeValidation={true}
-                    acceptedFileTypes={['audio/mp3', 'audio/wav', 'video/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/mpeg']}
-                    labelFileTypeNotAllowed="Formato de archivo inválido"
-                    fileValidateTypeLabelExpectedTypes="Se esperan archivos de audio (MP3, WAV, MP4, M4A)"
-                    labelIdle='Arrastra y suelta tu archivo de audio aquí o <span class="filepond--label-action">Selecciona</span>'
-                    oninit={() => console.log('FilePond instance initialized')}
-                    onupdatefiles={(fileItems) => {
-                      console.log('Archivos actualizados', fileItems);
-                      setFile(fileItems.length > 0 ? fileItems[0].file : null);
-                    }}
-                    disabled={processing}
+                {/* Botón iniciar nueva transcripción */}
+                <div className="mb-4">
+                  <button
+                    onClick={clearTranscription}
+                    className="text-primary-600 hover:text-primary-800 font-medium"
+                  >
+                    Iniciar nueva transcripción
+                  </button>
+                </div>
+                
+                {/* Vista de transcripción */}
+                {transcription && (
+                  <TranscriptionView 
+                    transcription={transcription} 
+                    title={selectedTranscriptionTitle}
+                    onDownload={handleDownload} 
                   />
+                )}
+              </>
+            ) : (
+              <>
+                <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+                  <h1 className="text-3xl font-bold text-gray-800 mb-6">Cargar Archivo de Audio</h1>
+                  
+                  <div className="mb-6">
+                    <FilePond
+                      ref={filePondRef}
+                      allowFileTypeValidation={true}
+                      acceptedFileTypes={['audio/mp3', 'audio/wav', 'video/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/mpeg']}
+                      labelFileTypeNotAllowed="Formato de archivo inválido"
+                      fileValidateTypeLabelExpectedTypes="Se esperan archivos de audio (MP3, WAV, MP4, M4A)"
+                      labelIdle='Arrastra y suelta tu archivo de audio aquí o <span class="filepond--label-action">Selecciona</span>'
+                      oninit={() => console.log('FilePond instance initialized')}
+                      onupdatefiles={(fileItems) => {
+                        console.log('Archivos actualizados', fileItems);
+                        setFile(fileItems.length > 0 ? fileItems[0].file : null);
+                      }}
+                      disabled={processing}
+                    />
+                  </div>
+                  
+                  <button
+                    onClick={handleProcessFile}
+                    disabled={(!file && !filePondRef.current?.getFiles().length) || processing}
+                    className={`w-full flex items-center justify-center py-3 px-4 rounded-md font-medium text-white ${
+                      (!file && !filePondRef.current?.getFiles().length) || processing
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-primary-600 hover:bg-primary-700'
+                    }`}
+                  >
+                    {processing ? (
+                      <>
+                        <FiCpu className="animate-spin mr-2" />
+                        Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <FiUpload className="mr-2" />
+                        Transcribir Audio
+                      </>
+                    )}
+                  </button>
                 </div>
                 
-                <button
-                  onClick={handleProcessFile}
-                  disabled={(!file && !filePondRef.current?.getFiles().length) || processing}
-                  className={`w-full flex items-center justify-center py-3 px-4 rounded-md font-medium text-white ${
-                    (!file && !filePondRef.current?.getFiles().length) || processing
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-primary-600 hover:bg-primary-700'
-                  }`}
-                >
-                  {processing ? (
-                    <>
-                      <FiCpu className="animate-spin mr-2" />
-                      Procesando...
-                    </>
-                  ) : (
-                    <>
-                      <FiUpload className="mr-2" />
-                      Transcribir Audio
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-            
-            <div className="mb-4">
-              {processing && (
-                <div className="bg-gray-100 rounded-lg p-4 mt-4">
-                  <div className="mb-2 flex justify-between items-center">
-                    <span className="text-gray-700">{progressMessage}</span>
-                    <span className="text-gray-700">{progress}%</span>
+                {/* Barra de progreso solo visible durante el procesamiento */}
+                {processing && (
+                  <div className="bg-gray-100 rounded-lg p-4 mt-4">
+                    <div className="mb-2 flex justify-between items-center">
+                      <span className="text-gray-700">{progressMessage}</span>
+                      <span className="text-gray-700">{progress}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-300 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary-600 transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="h-2 bg-gray-300 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary-600 transition-all duration-300"
-                      style={{ width: `${progress}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {/* Actualizar la lógica para mostrar el mensaje de error solo cuando realmente sea necesario */}
-            {error && !showCompleted && !transcription && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mb-4 flex items-center">
-                <FiX className="text-red-500 mr-2" />
-                {error}
-              </div>
-            )}
-            
-            {success && !showCompleted && (
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-4 flex items-center">
-                <FiCheck className="text-green-500 mr-2" />
-                Transcripción completada con éxito.
-              </div>
-            )}
-
-            {transcription && (
-              <div className="mt-4">
-                <button
-                  onClick={clearTranscription}
-                  className="text-primary-600 hover:text-primary-800 font-medium"
-                >
-                  Iniciar nueva transcripción
-                </button>
-              </div>
+                )}
+              </>
             )}
           </>
-        )}
-        
-        {showCompleted && (
-          <>
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-4 flex items-center">
-              <FiCheck className="text-green-500 mr-2" />
-              Transcripción completada con éxito.
-            </div>
-            
-            <div className="mb-4">
-              <button
-                onClick={clearTranscription}
-                className="text-primary-600 hover:text-primary-800 font-medium"
-              >
-                Iniciar nueva transcripción
-              </button>
-            </div>
-          </>
-        )}
-        
-        {showCompleted && transcription && (
-          <TranscriptionView 
-            transcription={transcription} 
-            title={selectedTranscriptionTitle}
-            onDownload={handleDownload} 
-          />
         )}
       </main>
       

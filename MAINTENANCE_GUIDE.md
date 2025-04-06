@@ -53,8 +53,34 @@ ssh -p 2222 root@134.199.218.48 "find /var/www/whisper-meeting/backend/temp/ -ty
 ```bash
 # En el servidor
 echo '#!/bin/bash
-find /var/www/whisper-meeting/backend/temp/ -type f -mtime +7 -delete' > /etc/cron.daily/cleanup-whisper-temp
+find /var/www/whisper-meeting/backend/temp/ -type d -mtime +7 -exec rm -rf {} \; 2>/dev/null || true' > /etc/cron.daily/cleanup-whisper-temp
 chmod +x /etc/cron.daily/cleanup-whisper-temp
+```
+
+### Verificar el Funcionamiento del Script de Limpieza
+
+Para comprobar que el script de limpieza automática está correctamente configurado:
+
+```bash
+# Verificar que el script existe y tiene permisos de ejecución
+ls -la /etc/cron.daily/cleanup-whisper-temp
+```
+
+Para verificar cuándo se ejecutó el script por última vez (después de algunos días):
+
+```bash
+# Buscar en los logs de sistema
+grep cleanup-whisper-temp /var/log/syslog
+```
+
+Si necesitas eliminar manualmente todos los archivos temporales inmediatamente:
+
+```bash
+# Eliminar todos los archivos y directorios temporales
+rm -rf /var/www/whisper-meeting/backend/temp/*
+
+# Verificar que se hayan eliminado correctamente
+find /var/www/whisper-meeting/backend/temp/ -type f | wc -l
 ```
 
 ## Monitoreo y Solución de Problemas
@@ -104,6 +130,41 @@ ssh -p 2222 root@134.199.218.48 "sed -i '/Environment=\"PATH/a Environment=\"PYT
 ```
 
 La variable `PYTHONPATH` es crítica para que Python pueda encontrar módulos en el proyecto, permitiendo tanto importaciones absolutas como relativas.
+
+### Problemas con Variables de Entorno
+
+Si encuentras errores relacionados con variables de entorno no cargadas:
+
+1. Verifica que el archivo `.env` existe en la ubicación correcta:
+   ```bash
+   ssh -p 2222 root@134.199.218.48 "ls -la /var/www/whisper-meeting/backend/.env"
+   ```
+
+2. Asegúrate de que los archivos principales utilizan rutas absolutas para cargar el archivo `.env`:
+   ```bash
+   ssh -p 2222 root@134.199.218.48 "cat /var/www/whisper-meeting/backend/utils/transcriber.py | grep dotenv"
+   ssh -p 2222 root@134.199.218.48 "cat /var/www/whisper-meeting/backend/main.py | grep dotenv"
+   ```
+
+3. Si es necesario, actualiza los archivos para usar rutas absolutas:
+   ```bash
+   ssh -p 2222 root@134.199.218.48 "sed -i 's/load_dotenv()/from pathlib import Path\\ndotenv_path = Path(\"\/var\/www\/whisper-meeting\/backend\/.env\")\\nload_dotenv(dotenv_path=dotenv_path)/' /var/www/whisper-meeting/backend/main.py"
+   ```
+
+### Problemas con la Visualización de Transcripciones
+
+Si encuentras mensajes de error persistentes al visualizar transcripciones completadas:
+
+1. Limpia el almacenamiento de caché del navegador del usuario.
+2. Verifica que la aplicación está utilizando la versión más reciente del frontend:
+   ```bash
+   ssh -p 2222 root@134.199.218.48 "cd /var/www/whisper-meeting/frontend && git log -1 --pretty=format:'%h - %an, %ar : %s'"
+   ```
+
+3. Si es necesario, actualiza manualmente:
+   ```bash
+   ssh -p 2222 root@134.199.218.48 "cd /var/www/whisper-meeting && ./update_deployment.sh"
+   ```
 
 ## Problemas Comunes y Soluciones
 

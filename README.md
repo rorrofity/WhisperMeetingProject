@@ -12,6 +12,8 @@ Sistema local para transcribir archivos de audio y exportar resultados utilizand
 - Interfaz web moderna con React, Vite y TailwindCSS
 - **Sistema de autenticación con JWT**
 - **Historial de transcripciones por usuario**
+- **Manejo robusto de estados de transcripción con notificaciones claras**
+- **Redirección automática a login al expirar el token JWT**
 
 ## Estructura del Proyecto
 
@@ -270,9 +272,13 @@ Esta configuración funciona con la variable `PYTHONPATH=/var/www/whisper-meetin
   python initialize_app.py
   ```
 
-- **Token expirado**: Los tokens JWT expiran después de 30 minutos por defecto. Vuelve a iniciar sesión para obtener un nuevo token.
+- **Token expirado**: Los tokens JWT expiran después de 30 minutos por defecto. La aplicación redirigirá automáticamente a la pantalla de inicio de sesión cuando el token expire.
 
-- **Error en la API de Deepgram**: Verificar que la clave API esté correctamente configurada en el archivo `.env`.
+- **Error en la API de Deepgram**: Verificar que la clave API esté correctamente configurada en el archivo `.env` y que la ruta al archivo sea correcta.
+
+- **Mensaje de error persistente en la transcripción**: Si ves mensajes de error incluso cuando la transcripción fue exitosa, reinicia la aplicación o limpia la caché del navegador. Estos problemas han sido solucionados en la última versión.
+
+- **Problemas con la carga de variables de entorno**: Asegúrate de que el archivo `.env` está en la ubicación correcta y que los archivos `transcriber.py` y `main.py` hacen referencia a la ruta absoluta del archivo.
 
 ## Contribución
 

@@ -239,11 +239,11 @@ function AppContent() {
               });
               
               // Buscar si el job_id actual está en el historial y está completado
-              const transcriptionInHistory = historyResponse.data.find(
+              const transcriptionItem = historyResponse.data.find(
                 t => t.job_id === jobId && t.status === 'completed'
               );
               
-              if (transcriptionInHistory) {
+              if (transcriptionItem) {
                 console.log('Transcripción encontrada en el historial como completada');
                 setProgressMessage('¡Transcripción completada! Disponible en el historial.');
                 setProgress(100);
@@ -368,6 +368,10 @@ function AppContent() {
     setShowHistory(false);
     // Mostrar mensaje de éxito al seleccionar una transcripción del historial
     setSuccess(true);
+    // Mostrar la vista de transcripción completada
+    setShowCompleted(true);
+    // Limpiar cualquier mensaje de error
+    setError(null);
   };
 
   const clearTranscription = () => {
@@ -426,6 +430,7 @@ function AppContent() {
               setProcessing(false);
               setSuccess(true);
               setShowCompleted(true);
+              setError(null); // Eliminar cualquier mensaje de error si la transcripción se cargó correctamente
               return;
             }
           }
@@ -445,6 +450,7 @@ function AppContent() {
             setProcessing(false);
             setSuccess(true);
             setShowCompleted(true);
+            setError(null); // Eliminar cualquier mensaje de error si la transcripción se cargó correctamente
           }
         } catch (error) {
           console.error('[useEffect] Error al obtener transcripción:', error);
@@ -567,7 +573,8 @@ function AppContent() {
               )}
             </div>
             
-            {error && (
+            {/* Mensaje de error solo si hay un error y no hay transcripción o no está completada */}
+            {error && !showCompleted && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mb-4 flex items-center">
                 <FiX className="text-red-500 mr-2" />
                 {error}

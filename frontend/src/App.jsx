@@ -179,24 +179,15 @@ function AppContent() {
                 console.log("Resultados recibidos:", resultsResponse.data);
                 
                 if (resultsResponse.data && resultsResponse.data.transcription) {
-                  // Guardar la transcripción en el estado
-                  setTranscription(resultsResponse.data.transcription);
+                  // Usar la nueva función unificada
+                  const title = file && file.name 
+                    ? `Transcripción de ${file.name}` 
+                    : "Transcripción completada";
                   
-                  // Actualizar el título de la transcripción con el nombre del archivo
-                  if (file && file.name) {
-                    setSelectedTranscriptionTitle(`Transcripción de ${file.name}`);
-                  } else {
-                    setSelectedTranscriptionTitle("Transcripción completada");
-                  }
-                  
-                  // Detener la animación de procesamiento
-                  setProcessing(false);
-                  
-                  // Mostrar mensaje de éxito
-                  setSuccess(true);
-                  
-                  // Mostrar la vista de transcripción completada
-                  setShowCompleted(true);
+                  handleTranscriptionCompleted(
+                    resultsResponse.data.transcription,
+                    title
+                  );
                   
                   console.log("Transcripción y vista actualizadas correctamente");
                 } else {
@@ -265,6 +256,24 @@ function AppContent() {
       setError('Error al procesar el archivo: ' + (error.response?.data?.detail || error.message));
       setProcessing(false);
     }
+  };
+
+  // Esta función se ejecuta cuando se detecta que una transcripción ha sido completada
+  const handleTranscriptionCompleted = (transcriptionText, title) => {
+    // Limpiar cualquier estado de error previo
+    setError(null);
+    
+    // Establecer los datos de la transcripción
+    setTranscription(transcriptionText);
+    setSelectedTranscriptionTitle(title);
+    
+    // Detener la animación de procesamiento y mostrar éxito
+    setProcessing(false);
+    setSuccess(true);
+    setShowCompleted(true);
+    
+    // Log para debug
+    console.log("[handleTranscriptionCompleted] Transcripción cargada correctamente");
   };
 
   // Function to handle file download
@@ -363,17 +372,14 @@ function AppContent() {
   };
 
   const handleSelectHistoryTranscription = (selectedTranscription) => {
-    setTranscription(selectedTranscription.content);
-    setSelectedTranscriptionTitle(selectedTranscription.title);
+    // Usar nuestra función unificada para manejar la selección del historial
+    handleTranscriptionCompleted(selectedTranscription.content, selectedTranscription.title);
+    
     // Guardar el ID de la transcripción seleccionada del historial
     setProcessId(selectedTranscription.id);
+    
+    // Cerrar la vista de historial
     setShowHistory(false);
-    // Mostrar mensaje de éxito al seleccionar una transcripción del historial
-    setSuccess(true);
-    // Mostrar la vista de transcripción completada
-    setShowCompleted(true);
-    // Limpiar cualquier mensaje de error
-    setError(null);
   };
 
   // Limpiar completamente el estado y reiniciar para una nueva transcripción
@@ -431,12 +437,10 @@ function AppContent() {
             
             if (transcriptionItem) {
               console.log('[useEffect] Transcripción encontrada en historial:', transcriptionItem);
-              setTranscription(transcriptionItem.content);
-              setSelectedTranscriptionTitle(transcriptionItem.title);
-              setProcessing(false);
-              setSuccess(true);
-              setShowCompleted(true);
-              setError(null); // Eliminar cualquier mensaje de error si la transcripción se cargó correctamente
+              handleTranscriptionCompleted(
+                transcriptionItem.content,
+                transcriptionItem.title
+              );
               return;
             }
           }
@@ -451,12 +455,10 @@ function AppContent() {
           
           if (resultsResponse.data && resultsResponse.data.transcription) {
             console.log('[useEffect] Resultados obtenidos directamente:', resultsResponse.data);
-            setTranscription(resultsResponse.data.transcription);
-            setSelectedTranscriptionTitle(`Transcripción de ${file?.name || 'audio'}`);
-            setProcessing(false);
-            setSuccess(true);
-            setShowCompleted(true);
-            setError(null); // Eliminar cualquier mensaje de error si la transcripción se cargó correctamente
+            handleTranscriptionCompleted(
+              resultsResponse.data.transcription,
+              `Transcripción de ${file?.name || 'audio'}`
+            );
           }
         } catch (error) {
           console.error('[useEffect] Error al obtener transcripción:', error);

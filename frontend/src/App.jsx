@@ -396,6 +396,65 @@ function AppContent() {
     setShowHistory(!showHistory);
   };
 
+  // Añadir un useEffect que verifique el estado cuando processId cambia
+  useEffect(() => {
+    // Solo verificar cuando hay un processId válido
+    if (processId && progress === 100) {
+      const fetchTranscriptionData = async () => {
+        try {
+          console.log(`[useEffect] Obteniendo transcripción para proceso: ${processId}`);
+          
+          // Intentar obtener los datos desde el historial
+          const historyResponse = await axios.get(`${API_URL}/api/transcriptions/user`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          console.log('[useEffect] Historial obtenido:', historyResponse.data);
+          
+          if (historyResponse.data && Array.isArray(historyResponse.data)) {
+            // Buscar la transcripción por processId
+            const transcriptionItem = historyResponse.data.find(
+              item => item.id === processId || item.file_path.includes(processId)
+            );
+            
+            if (transcriptionItem) {
+              console.log('[useEffect] Transcripción encontrada en historial:', transcriptionItem);
+              setTranscription(transcriptionItem.content);
+              setSelectedTranscriptionTitle(transcriptionItem.title);
+              setProcessing(false);
+              setSuccess(true);
+              setShowCompleted(true);
+              return;
+            }
+          }
+          
+          // Si no está en el historial, intentar directamente con el endpoint de resultados
+          console.log('[useEffect] Intentando obtener resultados directamente');
+          const resultsResponse = await axios.get(`${API_URL}/api/results/${processId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (resultsResponse.data && resultsResponse.data.transcription) {
+            console.log('[useEffect] Resultados obtenidos directamente:', resultsResponse.data);
+            setTranscription(resultsResponse.data.transcription);
+            setSelectedTranscriptionTitle(`Transcripción de ${file?.name || 'audio'}`);
+            setProcessing(false);
+            setSuccess(true);
+            setShowCompleted(true);
+          }
+        } catch (error) {
+          console.error('[useEffect] Error al obtener transcripción:', error);
+        }
+      };
+      
+      fetchTranscriptionData();
+    }
+  }, [processId, progress, token]);
+
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">

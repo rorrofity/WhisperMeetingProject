@@ -57,6 +57,12 @@ function AppContent() {
         return;
       }
 
+      // Limpiar cualquier transcripción anterior y reiniciar estados
+      setTranscription(null);
+      setSuccess(false);
+      setShowCompleted(false);
+      setSelectedTranscriptionTitle(null);
+      
       setProcessing(true);
       setProgress(10);
       setError(null);
@@ -159,29 +165,51 @@ function AppContent() {
               setProgress(80);
               break;
             case 'completed':
-              setProgressMessage('Transcripción completada. Los resultados están disponibles en el historial.');
+              setProgressMessage('Transcripción completada. Los resultados están disponibles.');
               setProgress(100);
               completedDetected = true;
                 
               try {
-                const resultsResponse = await axios.get(`${API_URL}/api/results/${jobId}`);
-                setTranscription(resultsResponse.data.transcription);
-                // Actualizar el título de la transcripción con el nombre del archivo
-                if (file) {
-                  setSelectedTranscriptionTitle(`Transcripción de ${file.name}`);
-                }
-                // Mostrar mensaje de éxito y ocultar el componente de carga
-                setProcessing(false);
-                // Activar mensaje de éxito inmediatamente
-                setSuccess(true);
+                console.log(`Obteniendo resultados del proceso: ${jobId}`);
+                const resultsResponse = await axios.get(`${API_URL}/api/results/${jobId}`, {
+                  headers: {
+                    'Authorization': `Bearer ${token}`
+                  }
+                });
+                console.log("Resultados recibidos:", resultsResponse.data);
                 
-                // Redirigir directamente a la vista de transcripción completada
-                setShowCompleted(true);
+                if (resultsResponse.data && resultsResponse.data.transcription) {
+                  // Guardar la transcripción en el estado
+                  setTranscription(resultsResponse.data.transcription);
+                  
+                  // Actualizar el título de la transcripción con el nombre del archivo
+                  if (file && file.name) {
+                    setSelectedTranscriptionTitle(`Transcripción de ${file.name}`);
+                  } else {
+                    setSelectedTranscriptionTitle("Transcripción completada");
+                  }
+                  
+                  // Detener la animación de procesamiento
+                  setProcessing(false);
+                  
+                  // Mostrar mensaje de éxito
+                  setSuccess(true);
+                  
+                  // Mostrar la vista de transcripción completada
+                  setShowCompleted(true);
+                  
+                  console.log("Transcripción y vista actualizadas correctamente");
+                } else {
+                  throw new Error("La respuesta no contiene datos de transcripción");
+                }
               } catch (resultError) {
                 console.error('Error al obtener resultados:', resultError);
-                // Intentar obtener los resultados directamente de la base de datos a través del historial
-                setProgressMessage('Transcripción completada. Los resultados están disponibles en el historial.');
+                console.error('Detalles del error:', resultError.response ? resultError.response.data : 'No hay detalles');
+                
+                // Intentar obtener los resultados directamente de la base de datos
+                setProgressMessage('Ocurrió un error al obtener la transcripción. Revisa el historial.');
                 setProcessing(false);
+                setError("No se pudo cargar la transcripción. Por favor, verifica el historial.");
               }
                 
               clearInterval(statusInterval);
@@ -418,28 +446,26 @@ function AppContent() {
           <TranscriptionHistory onSelectTranscription={handleSelectHistoryTranscription} />
         ) : (
           <>
-            <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-              <h1 className="text-3xl font-bold text-gray-800 mb-6">Cargar Archivo de Audio</h1>
-              
-              <div className="mb-6">
-                {!transcription && (
-                  <div className="mb-6">
-                    <FilePond
-                      ref={filePondRef}
-                      allowFileTypeValidation={true}
-                      acceptedFileTypes={['audio/mp3', 'audio/wav', 'video/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/mpeg']}
-                      labelFileTypeNotAllowed="Formato de archivo inválido"
-                      fileValidateTypeLabelExpectedTypes="Se esperan archivos de audio (MP3, WAV, MP4, M4A)"
-                      labelIdle='Arrastra y suelta tu archivo de audio aquí o <span class="filepond--label-action">Selecciona</span>'
-                      oninit={() => console.log('FilePond instance initialized')}
-                      onupdatefiles={(fileItems) => {
-                        console.log('Archivos actualizados', fileItems);
-                        setFile(fileItems.length > 0 ? fileItems[0].file : null);
-                      }}
-                      disabled={processing}
-                    />
-                  </div>
-                )}
+            {!transcription && !showCompleted && (
+              <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h1 className="text-3xl font-bold text-gray-800 mb-6">Cargar Archivo de Audio</h1>
+                
+                <div className="mb-6">
+                  <FilePond
+                    ref={filePondRef}
+                    allowFileTypeValidation={true}
+                    acceptedFileTypes={['audio/mp3', 'audio/wav', 'video/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/mpeg']}
+                    labelFileTypeNotAllowed="Formato de archivo inválido"
+                    fileValidateTypeLabelExpectedTypes="Se esperan archivos de audio (MP3, WAV, MP4, M4A)"
+                    labelIdle='Arrastra y suelta tu archivo de audio aquí o <span class="filepond--label-action">Selecciona</span>'
+                    oninit={() => console.log('FilePond instance initialized')}
+                    onupdatefiles={(fileItems) => {
+                      console.log('Archivos actualizados', fileItems);
+                      setFile(fileItems.length > 0 ? fileItems[0].file : null);
+                    }}
+                    disabled={processing}
+                  />
+                </div>
                 
                 <button
                   onClick={handleProcessFile}
@@ -463,76 +489,76 @@ function AppContent() {
                   )}
                 </button>
               </div>
-              
-              <div className="mb-4">
-                {processing && (
-                  <div className="bg-gray-100 rounded-lg p-4 mt-4">
-                    <div className="mb-2 flex justify-between items-center">
-                      <span className="text-gray-700">{progressMessage}</span>
-                      <span className="text-gray-700">{progress}%</span>
-                    </div>
-                    <div className="h-2 bg-gray-300 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary-600 transition-all duration-300"
-                        style={{ width: `${progress}%` }}
-                      ></div>
-                    </div>
+            )}
+            
+            <div className="mb-4">
+              {processing && (
+                <div className="bg-gray-100 rounded-lg p-4 mt-4">
+                  <div className="mb-2 flex justify-between items-center">
+                    <span className="text-gray-700">{progressMessage}</span>
+                    <span className="text-gray-700">{progress}%</span>
                   </div>
-                )}
-              </div>
-              
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mb-4 flex items-center">
-                  <FiX className="text-red-500 mr-2" />
-                  {error}
-                </div>
-              )}
-              
-              {success && !showCompleted && (
-                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-4 flex items-center">
-                  <FiCheck className="text-green-500 mr-2" />
-                  Transcripción completada con éxito.
-                </div>
-              )}
-
-              {transcription && (
-                <div className="mt-4">
-                  <button
-                    onClick={clearTranscription}
-                    className="text-primary-600 hover:text-primary-800 font-medium"
-                  >
-                    Iniciar nueva transcripción
-                  </button>
+                  <div className="h-2 bg-gray-300 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary-600 transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    ></div>
+                  </div>
                 </div>
               )}
             </div>
             
-            {showCompleted && (
-              <>
-                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-4 flex items-center">
-                  <FiCheck className="text-green-500 mr-2" />
-                  Transcripción completada con éxito.
-                </div>
-                
-                <div className="mb-4">
-                  <button
-                    onClick={clearTranscription}
-                    className="text-primary-600 hover:text-primary-800 font-medium"
-                  >
-                    Iniciar nueva transcripción
-                  </button>
-                </div>
-              </>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mb-4 flex items-center">
+                <FiX className="text-red-500 mr-2" />
+                {error}
+              </div>
             )}
             
-            {showCompleted && transcription && (
-              <TranscriptionView 
-                transcription={transcription} 
-                title={selectedTranscriptionTitle}
-                onDownload={handleDownload} 
-              />
+            {success && !showCompleted && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-4 flex items-center">
+                <FiCheck className="text-green-500 mr-2" />
+                Transcripción completada con éxito.
+              </div>
+            )}
+
+            {transcription && (
+              <div className="mt-4">
+                <button
+                  onClick={clearTranscription}
+                  className="text-primary-600 hover:text-primary-800 font-medium"
+                >
+                  Iniciar nueva transcripción
+                </button>
+              </div>
             )}
           </>
+        )}
+        
+        {showCompleted && (
+          <>
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-4 flex items-center">
+              <FiCheck className="text-green-500 mr-2" />
+              Transcripción completada con éxito.
+            </div>
+            
+            <div className="mb-4">
+              <button
+                onClick={clearTranscription}
+                className="text-primary-600 hover:text-primary-800 font-medium"
+              >
+                Iniciar nueva transcripción
+              </button>
+            </div>
+          </>
+        )}
+        
+        {showCompleted && transcription && (
+          <TranscriptionView 
+            transcription={transcription} 
+            title={selectedTranscriptionTitle}
+            onDownload={handleDownload} 
+          />
         )}
       </main>
       

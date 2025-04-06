@@ -206,10 +206,12 @@ function AppContent() {
                 console.error('Error al obtener resultados:', resultError);
                 console.error('Detalles del error:', resultError.response ? resultError.response.data : 'No hay detalles');
                 
-                // Intentar obtener los resultados directamente de la base de datos
-                setProgressMessage('Ocurrió un error al obtener la transcripción. Revisa el historial.');
+                // No establecer un mensaje de error visible aquí, simplemente cambiar el mensaje de progreso
+                setProgressMessage('Buscando transcripción en el historial...');
                 setProcessing(false);
-                setError("No se pudo cargar la transcripción. Por favor, verifica el historial.");
+                
+                // Intentar obtener los resultados del historial en segundo plano - se manejará automáticamente por el useEffect
+                console.log("Intentando obtener resultados desde el historial a través del useEffect...");
               }
                 
               clearInterval(statusInterval);

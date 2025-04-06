@@ -376,13 +376,14 @@ function AppContent() {
     setError(null);
   };
 
+  // Limpiar completamente el estado y reiniciar para una nueva transcripción
   const clearTranscription = () => {
     setTranscription(null);
     setFile(null);
     setProcessId(null);
     setProgress(0);
     setProgressMessage('');
-    setError(null);
+    setError(null); // Reiniciar el estado de error
     setSuccess(false); // Reiniciar el estado de éxito
     setShowCompleted(false); // Reiniciar la vista de transcripción completada
     setSelectedTranscriptionTitle(null);
@@ -406,6 +407,9 @@ function AppContent() {
   useEffect(() => {
     // Solo verificar cuando hay un processId válido
     if (processId && progress === 100) {
+      // Limpiar cualquier mensaje de error previo
+      setError(null);
+      
       const fetchTranscriptionData = async () => {
         try {
           console.log(`[useEffect] Obteniendo transcripción para proceso: ${processId}`);
@@ -575,8 +579,8 @@ function AppContent() {
               )}
             </div>
             
-            {/* Mensaje de error solo si hay un error y no hay transcripción o no está completada */}
-            {error && !showCompleted && (
+            {/* Actualizar la lógica para mostrar el mensaje de error solo cuando realmente sea necesario */}
+            {error && !showCompleted && !transcription && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative mb-4 flex items-center">
                 <FiX className="text-red-500 mr-2" />
                 {error}

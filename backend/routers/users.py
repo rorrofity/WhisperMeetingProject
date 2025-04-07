@@ -2,36 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
-import os
-import sys
 
-# Manejar diferentes formatos de importación para compatibilidad entre entornos
-try:
-    # Primero intentamos importación relativa (servidor)
-    from database.connection import get_db
-    from models.models import User
-    from models.schemas import User as UserSchema, UserCreate, Token
-    from auth.utils import get_password_hash
-    from auth.jwt import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-except ModuleNotFoundError:
-    try:
-        # Segundo intento: importación absoluta desde backend (local)
-        from backend.database.connection import get_db
-        from backend.models.models import User
-        from backend.models.schemas import User as UserSchema, UserCreate, Token
-        from backend.auth.utils import get_password_hash
-        from backend.auth.jwt import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-    except ModuleNotFoundError:
-        # Tercer intento: importación relativa diferente (por si acaso)
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        root_dir = os.path.abspath(os.path.join(current_dir, '../..'))
-        if root_dir not in sys.path:
-            sys.path.insert(0, root_dir)
-        from backend.database.connection import get_db
-        from backend.models.models import User
-        from backend.models.schemas import User as UserSchema, UserCreate, Token
-        from backend.auth.utils import get_password_hash
-        from backend.auth.jwt import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from database.connection import get_db
+from models.models import User
+from models.schemas import User as UserSchema, UserCreate, Token
+from auth.utils import get_password_hash
+from auth.jwt import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter(
     prefix="/users",

@@ -14,41 +14,17 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 
-# Manejar diferentes formatos de importación para compatibilidad entre entornos
-try:
-    # Primero intentamos importación relativa (servidor)
-    from utils.audio_processor import AudioProcessor
-    from utils.transcriber import Transcriber
-except ModuleNotFoundError:
-    try:
-        # Segundo intento: importación absoluta desde backend (local)
-        from backend.utils.audio_processor import AudioProcessor
-        from backend.utils.transcriber import Transcriber
-    except ModuleNotFoundError:
-        # Tercer intento: importación relativa diferente (por si acaso)
-        import sys
-        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-        from backend.utils.audio_processor import AudioProcessor
-        from backend.utils.transcriber import Transcriber
+# Módulos internos de la aplicación - Modificamos las importaciones para que sean relativas
+from utils.audio_processor import AudioProcessor
+from utils.transcriber import Transcriber
 
-# Manejar importaciones para database y models con el mismo enfoque
-try:
-    # Primero intentamos importación relativa (servidor)
-    from database.connection import get_db, SessionLocal
-    from database.init_db import init_db
-    from models.models import User, Transcription as DBTranscription
-    from auth.jwt import get_current_active_user, authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-    from routers import users, transcriptions
-    from models.schemas import Token
-except ModuleNotFoundError:
-    # Segundo intento: importación absoluta desde backend (local)
-    from backend.database.connection import get_db, SessionLocal
-    from backend.database.init_db import init_db
-    from backend.models.models import User, Transcription as DBTranscription
-    from backend.auth.jwt import get_current_active_user, authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-    from backend.routers import users, transcriptions
-    from backend.models.schemas import Token
-
+# Importar nuevos módulos para autenticación y base de datos
+from database.connection import get_db, SessionLocal
+from database.init_db import init_db
+from models.models import User, Transcription as DBTranscription
+from auth.jwt import get_current_active_user, authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from routers import users, transcriptions
+from models.schemas import Token
 from datetime import timedelta
 
 # Load environment variables with explicit path

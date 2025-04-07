@@ -1,5 +1,18 @@
 from .connection import engine, Base
-from models.models import User, Transcription
+
+# Manejar diferentes formatos de importación para compatibilidad entre entornos
+try:
+    # Primero intentamos importación relativa (servidor)
+    from models.models import User, Transcription
+except ModuleNotFoundError:
+    try:
+        # Segundo intento: importación absoluta desde backend (local)
+        from backend.models.models import User, Transcription
+    except ModuleNotFoundError:
+        # Tercer intento: importación relativa diferente (por si acaso)
+        import sys, os
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+        from backend.models.models import User, Transcription
 
 def init_db():
     """Inicializa la base de datos creando todas las tablas definidas."""

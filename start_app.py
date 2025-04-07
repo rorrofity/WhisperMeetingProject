@@ -8,16 +8,24 @@ import webbrowser
 import signal
 import atexit
 
-# Detectar si estamos en entorno local (WSL) y configurar el entorno si es necesario
+# Detectar si estamos en entorno local y configurar el entorno si es necesario
+is_local_env = False
 if os.path.exists('/proc/version'):
     with open('/proc/version', 'r') as f:
         if 'Microsoft' in f.read():  # Detectar WSL
             print("Detectado entorno WSL, configurando entorno para desarrollo local...")
-            # Ejecutar configuración local sin modificar los archivos originales
             try:
-                # Añadir el directorio del proyecto al PYTHONPATH
+                # Configurar el PYTHONPATH para que las importaciones relativas funcionen
                 project_dir = os.path.dirname(os.path.abspath(__file__))
-                sys.path.insert(0, project_dir)
+                backend_dir = os.path.join(project_dir, 'backend')
+                
+                # Solo añadir estos directorios si no están ya en el PYTHONPATH
+                if backend_dir not in sys.path:
+                    sys.path.insert(0, backend_dir)
+                if project_dir not in sys.path:
+                    sys.path.insert(0, project_dir)
+                    
+                is_local_env = True
                 print("Entorno de desarrollo local configurado correctamente.")
             except Exception as e:
                 print(f"Error al configurar entorno local: {str(e)}")

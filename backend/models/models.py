@@ -2,7 +2,7 @@ from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, T
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from database.connection import Base
+from backend.database.connection import Base
 
 class User(Base):
     """Modelo para almacenar información de usuarios."""

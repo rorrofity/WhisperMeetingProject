@@ -1,5 +1,5 @@
 from .connection import engine, Base
-from models.models import User, Transcription
+from backend.models.models import User, Transcription
 
 def init_db():
     """Inicializa la base de datos creando todas las tablas definidas."""

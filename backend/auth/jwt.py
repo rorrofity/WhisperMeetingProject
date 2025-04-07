@@ -1,15 +1,35 @@
 from datetime import datetime, timedelta
 from typing import Optional
 import os
+import sys
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from models.schemas import TokenData
-from models.models import User
-from database.connection import get_db
+# Manejar diferentes formatos de importación para compatibilidad entre entornos
+try:
+    # Primero intentamos importación relativa (servidor)
+    from models.schemas import TokenData
+    from models.models import User
+    from database.connection import get_db
+except ModuleNotFoundError:
+    try:
+        # Segundo intento: importación absoluta desde backend (local)
+        from backend.models.schemas import TokenData
+        from backend.models.models import User
+        from backend.database.connection import get_db
+    except ModuleNotFoundError:
+        # Tercer intento: importación relativa diferente (por si acaso)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        root_dir = os.path.abspath(os.path.join(current_dir, '../..'))
+        if root_dir not in sys.path:
+            sys.path.insert(0, root_dir)
+        from backend.models.schemas import TokenData
+        from backend.models.models import User
+        from backend.database.connection import get_db
+
 from .utils import verify_password
 
 # Configuración para JWT

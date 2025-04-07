@@ -2,7 +2,19 @@ from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, T
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from database.connection import Base
+# Manejar diferentes formatos de importación para compatibilidad entre entornos
+try:
+    # Primero intentamos importación relativa (servidor)
+    from database.connection import Base
+except ModuleNotFoundError:
+    try:
+        # Segundo intento: importación absoluta desde backend (local)
+        from backend.database.connection import Base
+    except ModuleNotFoundError:
+        # Tercer intento: importación relativa diferente (por si acaso)
+        import sys, os
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+        from backend.database.connection import Base
 
 class User(Base):
     """Modelo para almacenar información de usuarios."""

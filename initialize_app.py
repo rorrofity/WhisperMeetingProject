@@ -1,5 +1,28 @@
 import os
+import sys
 import argparse
+
+# Detectar si estamos en entorno local y configurar el entorno si es necesario
+is_local_env = False
+if os.path.exists('/proc/version'):
+    with open('/proc/version', 'r') as f:
+        if 'Microsoft' in f.read():  # Detectar WSL
+            # Configurar el PYTHONPATH para que las importaciones relativas funcionen
+            try:
+                project_dir = os.path.dirname(os.path.abspath(__file__))
+                backend_dir = os.path.join(project_dir, 'backend')
+                
+                # Solo añadir estos directorios si no están ya en el PYTHONPATH
+                if backend_dir not in sys.path:
+                    sys.path.insert(0, backend_dir)
+                if project_dir not in sys.path:
+                    sys.path.insert(0, project_dir)
+                    
+                is_local_env = True
+                print("Entorno de desarrollo local configurado correctamente para inicialización.")
+            except Exception as e:
+                print(f"Error al configurar entorno local: {str(e)}")
+
 from backend.database.init_db import init_db
 from backend.database.connection import SessionLocal
 from backend.models.models import User

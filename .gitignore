@@ -59,3 +59,4 @@ uploaded_files/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+backend/app.db

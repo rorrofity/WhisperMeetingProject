@@ -68,6 +68,7 @@ WhisperMeetingProject/
 │
 ├── initialize_app.py     # Script para inicializar la base de datos y crear usuario
 ├── start_app.py          # Script para iniciar todo el sistema
+├── dev_setup.py          # Script para configuración de desarrollo local en WSL
 ├── AUTH_GUIDE.md         # Guía del sistema de autenticación
 ├── DEEPGRAM_GUIDE.md     # Guía para configurar Deepgram
 ├── API_REFERENCE.md      # Documentación de la API
@@ -120,7 +121,17 @@ WhisperMeetingProject/
    python start_app.py
    ```
 
-2. Alternativamente, puedes iniciar manualmente los servidores:
+2. **Para desarrollo en entorno WSL (Windows Subsystem for Linux):**
+   ```bash
+   python dev_setup.py
+   ```
+   
+   Este script está diseñado específicamente para solucionar problemas de importación en entornos WSL:
+   - Configura automáticamente el PYTHONPATH para que las importaciones relativas funcionen correctamente
+   - Evita errores comunes en el entorno local sin modificar el código fuente
+   - Es la opción recomendada para desarrolladores que trabajan con WSL
+
+3. Alternativamente, puedes iniciar manualmente los servidores:
    
    Backend:
    ```bash
@@ -134,15 +145,15 @@ WhisperMeetingProject/
    npm run dev
    ```
 
-3. Abrir el navegador web y acceder a:
+4. Abrir el navegador web y acceder a:
    ```
    http://localhost:5173
    ```
 
-4. Iniciar sesión con tus credenciales o registrar una nueva cuenta
-5. Subir un archivo de audio usando la interfaz
-6. Esperar a que se complete la transcripción
-7. Ver y descargar los resultados
+5. Iniciar sesión con tus credenciales o registrar una nueva cuenta
+6. Subir un archivo de audio usando la interfaz
+7. Esperar a que se complete la transcripción
+8. Ver y descargar los resultados
 
 ## Despliegue en Producción
 

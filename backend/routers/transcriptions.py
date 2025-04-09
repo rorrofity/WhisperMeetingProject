@@ -29,7 +29,7 @@ def get_user_transcriptions(
 
 @router.get("/{transcription_id}", response_model=TranscriptionSchema)
 def get_transcription(
-    transcription_id: int,
+    transcription_id: str,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -57,8 +57,13 @@ def create_transcription(
     db_transcription = Transcription(
         title=transcription.title,
         original_filename=transcription.original_filename,
-        file_path=transcription.file_path,
-        content=transcription.content,
+        audio_path=transcription.audio_path,
+        transcription=transcription.transcription,
+        short_summary=transcription.short_summary,
+        key_points=transcription.key_points,
+        action_items=transcription.action_items,
+        utterances_json=transcription.utterances_json,
+        duration=transcription.duration,
         user_id=current_user.id
     )
     
@@ -70,7 +75,7 @@ def create_transcription(
 
 @router.delete("/{transcription_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_transcription(
-    transcription_id: int,
+    transcription_id: str,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):

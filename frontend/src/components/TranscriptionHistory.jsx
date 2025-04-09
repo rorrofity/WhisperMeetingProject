@@ -25,12 +25,13 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
       
       console.log('Haciendo solicitud con token:', token.substring(0, 15) + '...');
       
-      const response = await axios.get(`${API_URL}/api/transcriptions/user`, {
+      const response = await axios.get(`${API_URL}/api/transcriptions/`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
       
+      console.log('Transcripciones recibidas:', response.data);
       setTranscriptions(response.data);
     } catch (error) {
       console.error('Error al obtener transcripciones:', error);
@@ -52,12 +53,13 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
       try {
         setLoading(true);
         
-        const response = await axios.get(`${API_URL}/api/transcriptions/user`, {
+        const response = await axios.get(`${API_URL}/api/transcriptions/`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
         
+        console.log('Transcripciones cargadas:', response.data);
         setTranscriptions(response.data);
       } catch (error) {
         console.error('Error al cargar transcripciones:', error);
@@ -83,7 +85,7 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
     }
     
     try {
-      await axios.delete(`${API_URL}/transcriptions/${id}`, {
+      await axios.delete(`${API_URL}/api/transcriptions/${id}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -107,12 +109,10 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
     
     try {
       const date = new Date(dateString);
+      // Formato más corto: solo día y mes
       return date.toLocaleString('es-ES', {
-        year: 'numeric',
-        month: 'long',
         day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        month: 'long'
       });
     } catch (error) {
       return 'Fecha inválida';
@@ -149,7 +149,7 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
           No tienes transcripciones guardadas.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200">
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -170,7 +170,7 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
             <tbody className="bg-white divide-y divide-gray-200">
               {transcriptions.map((transcription) => (
                 <tr key={transcription.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     <button
                       onClick={() => onSelectTranscription(transcription)}
                       className="text-primary-600 hover:text-primary-800 font-medium"
@@ -178,13 +178,13 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
                       {transcription.title || 'Sin título'}
                     </button>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                  <td className="px-6 py-4 text-gray-700">
                     {transcription.original_filename || 'Desconocido'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                  <td className="px-6 py-4 text-gray-700">
                     {formatDate(transcription.created_at)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => onSelectTranscription(transcription)}
                       className="text-blue-600 hover:text-blue-800 mx-2"

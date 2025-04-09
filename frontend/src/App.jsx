@@ -278,96 +278,47 @@ function AppContent() {
 
   // Function to handle file download
   const handleDownload = async () => {
-    // Si hay transcripción en el estado, podemos descargarla directamente sin hacer petición al servidor
-    if (transcription) {
-      console.log('Descargando transcripción desde el estado local');
-      try {
-        // Crear un blob con el contenido de la transcripción
-        const blob = new Blob([transcription], { type: 'text/plain' });
-        const url = window.URL.createObjectURL(blob);
-        
-        // Generar un nombre de archivo basado en diferentes fuentes
-        let filename;
-        
-        // Si tenemos un título de transcripción del historial, lo usamos primero
-        if (selectedTranscriptionTitle) {
-          filename = `${selectedTranscriptionTitle}.txt`;
-          console.log(`Usando título del historial: ${filename}`);
-        }
-        // Si tenemos el nombre original del archivo subido, lo usamos
-        else if (originalFilename) {
-          const nameWithoutExt = originalFilename.split('.').slice(0, -1).join('.');
-          filename = nameWithoutExt ? `${nameWithoutExt}_transcripcion.txt` : `${originalFilename}_transcripcion.txt`;
-          console.log(`Usando nombre de archivo original: ${filename}`);
-        }
-        // Como último recurso, usamos la fecha actual
-        else {
-          filename = `transcripcion_${new Date().toISOString().slice(0, 10)}.txt`;
-          console.log(`Usando nombre genérico con fecha: ${filename}`);
-        }
-        
-        // Crear un enlace y hacer clic en él para descargar
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        
-        // Limpiar
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(link);
-        return;
-      } catch (error) {
-        console.error('Error al crear archivo para descarga:', error);
-      }
-    }
-    
-    // Si no hay transcripción en el estado o falló la creación del blob, intentamos descargar desde el servidor
-    if (!processId) {
-      console.error('No hay un ID de proceso o transcripción para descargar');
-      setError('No se puede descargar: falta el identificador de la transcripción');
-      return;
-    }
-    
     try {
-      console.log(`Intentando descargar transcripción con ID: ${processId} desde el servidor`);
-      const response = await axios.get(`${API_URL}/download/${processId}?format=txt`, { 
-        responseType: 'blob',
+      if (!processId) {
+        setError('No hay transcripción disponible para descargar.');
+        return;
+      }
+      
+      setProgressMessage('Preparando archivo para descarga...');
+      
+      // Obtener el blob del archivo
+      const response = await axios.get(`${API_URL}/api/download/${processId}?format=txt`, {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        responseType: 'blob'
       });
       
-      let filename = '';
-      const contentDisposition = response.headers['content-disposition'];
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1];
-        }
-      }
-      
-      if (!filename && originalFilename) {
-        const nameWithoutExt = originalFilename.split('.').slice(0, -1).join('.');
-        filename = nameWithoutExt ? `${nameWithoutExt}.txt` : `${originalFilename}.txt`;
-      } else if (!filename) {
-        filename = `transcripcion_${new Date().toISOString().slice(0, 10)}.txt`;
-      }
-      
+      // Crear URL para el blob
       const url = window.URL.createObjectURL(new Blob([response.data]));
       
+      // Crear elemento de enlace para la descarga
       const link = document.createElement('a');
       link.href = url;
+      
+      // Nombre del archivo
+      const filename = originalFilename 
+        ? `Transcripcion_${originalFilename.replace(/\.[^/.]+$/, '')}.txt` 
+        : `Transcripcion_${new Date().toISOString().slice(0, 10)}.txt`;
+      
       link.setAttribute('download', filename);
+      
+      // Añadir al DOM, hacer clic y eliminar
       document.body.appendChild(link);
-      
       link.click();
-      
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
+      
+      // Liberar URL
+      window.URL.revokeObjectURL(url);
+      
     } catch (error) {
-      console.error('Error downloading file:', error);
-      setError('Error al descargar el archivo.');
+      console.error('Error al descargar la transcripción:', error);
+      setError('Error al descargar la transcripción. Intenta nuevamente.');
     }
   };
 
@@ -417,54 +368,63 @@ function AppContent() {
       setError(null);
       
       const fetchTranscriptionData = async () => {
+        if (!processId) return;
+        
         try {
-          console.log(`[useEffect] Obteniendo transcripción para proceso: ${processId}`);
-          
-          // Intentar obtener los datos desde el historial
-          const historyResponse = await axios.get(`${API_URL}/api/transcriptions/user`, {
+          // Verificar el estado primero
+          const statusResponse = await axios.get(`${API_URL}/api/status/${processId}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
           });
+          console.log('Estado de la transcripción:', statusResponse.data);
           
-          console.log('[useEffect] Historial obtenido:', historyResponse.data);
-          
-          if (historyResponse.data && Array.isArray(historyResponse.data)) {
-            // Buscar la transcripción por processId
-            const transcriptionItem = historyResponse.data.find(
-              item => item.id === processId || item.file_path.includes(processId)
-            );
+          if (statusResponse.data.status === 'completed') {
+            // Si está completo, obtener los resultados
+            const resultsResponse = await axios.get(`${API_URL}/api/results/${processId}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            console.log('Resultados de la transcripción:', resultsResponse.data);
             
-            if (transcriptionItem) {
-              console.log('[useEffect] Transcripción encontrada en historial:', transcriptionItem);
+            // Actualizar el estado con la transcripción
+            if (resultsResponse.data.transcription) {
+              setTranscription(resultsResponse.data.transcription);
               handleTranscriptionCompleted(
-                transcriptionItem.content,
-                transcriptionItem.title
+                resultsResponse.data.transcription,
+                `Transcripción de ${originalFilename || 'audio'}`
               );
-              return;
+            } else {
+              setError('La transcripción no contiene texto.');
             }
-          }
-          
-          // Si no está en el historial, intentar directamente con el endpoint de resultados
-          console.log('[useEffect] Intentando obtener resultados directamente');
-          const resultsResponse = await axios.get(`${API_URL}/api/results/${processId}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (resultsResponse.data && resultsResponse.data.transcription) {
-            console.log('[useEffect] Resultados obtenidos directamente:', resultsResponse.data);
-            handleTranscriptionCompleted(
-              resultsResponse.data.transcription,
-              `Transcripción de ${file?.name || 'audio'}`
-            );
+            
+            setProcessing(false);
+            setProgress(100);
+            setProgressMessage('Transcripción completada');
+            setSuccess(true);
+            setShowCompleted(true);
+            
+            // Limpiar el intervalo
+            return true;
+          } else if (statusResponse.data.status === 'error') {
+            setError(`Error en la transcripción: ${statusResponse.data.error || 'Error desconocido'}`);
+            setProcessing(false);
+            return true;
+          } else {
+            // Actualizar progreso
+            setProgress(Math.min(60 + Math.random() * 20, 95)); // Random progress between 60-95%
+            setProgressMessage('Procesando audio y generando transcripción...');
+            return false;
           }
         } catch (error) {
-          console.error('[useEffect] Error al obtener transcripción:', error);
+          console.error('Error al verificar el estado de la transcripción:', error);
+          setError('Error al verificar el estado de la transcripción. Intenta nuevamente.');
+          setProcessing(false);
+          return true;
         }
       };
-      
+
       fetchTranscriptionData();
     }
   }, [processId, progress, token]);

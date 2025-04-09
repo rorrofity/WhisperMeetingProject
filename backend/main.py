@@ -1,3 +1,6 @@
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 import os
 import shutil
 import tempfile
@@ -5,6 +8,7 @@ import logging
 import uuid
 from pathlib import Path
 from typing import Dict, List, Optional, Any
+from datetime import datetime, timedelta
 
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Form, HTTPException, Depends, status
 from fastapi.responses import JSONResponse, FileResponse, Response
@@ -24,8 +28,7 @@ from database.init_db import init_db
 from models.models import User, Transcription as DBTranscription
 from auth.jwt import get_current_active_user, authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from routers import users, transcriptions
-from models.schemas import Token
-from datetime import timedelta
+from models.schemas import Token, Transcription as TranscriptionSchema
 
 # Load environment variables with explicit path
 env_path = Path(__file__).parent / '.env'
@@ -41,7 +44,7 @@ logger = logging.getLogger(__name__)
 # FastAPI app
 app = FastAPI(title="Whisper Meeting Transcriber")
 
-# Add CORS middleware
+# Configurar CORS de la manera más permisiva posible
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -49,6 +52,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Endpoint de prueba simple
+@app.get("/test")
+async def test_endpoint():
+    """Endpoint de prueba simple para verificar que el servidor está funcionando."""
+    return {"status": "ok", "message": "El servidor está funcionando correctamente"}
 
 # Incluir los routers para usuarios y transcripciones
 app.include_router(users.router)
@@ -365,6 +374,64 @@ async def download_results(process_id: str, format: str = "txt"):
     else:
         raise HTTPException(status_code=400, detail="Invalid format. Use 'txt' or 'pdf'")
 
+@app.get("/api/download/{process_id}")
+async def download_results_with_api_prefix(process_id: str, format: str = "txt"):
+    """Endpoint duplicado para la descarga con prefijo /api/."""
+    if process_id not in jobs:
+        raise HTTPException(status_code=404, detail="Process not found")
+    
+    job = jobs[process_id]
+    
+    if job["status"] != "completed":
+        raise HTTPException(status_code=400, detail="Process not completed")
+    
+    original_filename = job.get("original_filename", "transcription")
+    
+    if format == "txt":
+        # Return plain text
+        content = job["results"]["transcription"]
+        
+        return Response(
+            content=content.encode("utf-8"),
+            media_type="text/plain",
+            headers={
+                "Content-Disposition": f'attachment; filename="{original_filename}.txt"',
+                "Content-Type": "text/plain; charset=utf-8"
+            }
+        )
+    elif format == "pdf":
+        # Generate PDF
+        pdf_path = f"results/{process_id}.pdf"
+        
+        if not os.path.exists(pdf_path):
+            # Create PDF
+            from fpdf import FPDF
+            
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
+            
+            # Add content
+            pdf.multi_cell(0, 10, job["results"]["transcription"])
+            
+            # Save PDF
+            pdf.output(pdf_path)
+        
+        # Return PDF
+        with open(pdf_path, "rb") as f:
+            content = f.read()
+            
+        return Response(
+            content=content,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{original_filename}.pdf"',
+                "Content-Type": "application/pdf"
+            }
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Invalid format. Use 'txt' or 'pdf'")
+
 @app.post("/api/users/token", response_model=Token)
 def login_with_api_prefix(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Endpoint duplicado para autenticación con prefijo /api."""
@@ -385,19 +452,54 @@ def login_with_api_prefix(form_data: OAuth2PasswordRequestForm = Depends(), db: 
     
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/api/transcriptions/user")
+@app.get("/api/transcriptions/", response_model=List[Dict[str, Any]])
 async def get_user_transcriptions_with_api_prefix(
     skip: int = 0, 
     limit: int = 100,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Endpoint duplicado para historial de transcripciones con prefijo /api."""
-    transcriptions = db.query(DBTranscription).filter(
-        DBTranscription.user_id == current_user.id
-    ).offset(skip).limit(limit).all()
-    
-    return transcriptions
+    """Endpoint duplicado para historial de transcripciones con prefijo /api/."""
+    try:
+        logger.info(f"Usuario {current_user.username} solicitó transcripciones (API)")
+        
+        # Consulta simple para obtener transcripciones del usuario
+        transcriptions_list = db.query(DBTranscription).filter(
+            DBTranscription.user_id == current_user.id
+        ).all()
+        
+        logger.info(f"Encontradas {len(transcriptions_list)} transcripciones para el usuario {current_user.username}")
+        
+        # Convertir a formato de respuesta simplificado (diccionarios simples)
+        result = []
+        for t in transcriptions_list:
+            try:
+                # Crear un diccionario con solo los campos necesarios para la respuesta
+                trans_dict = {
+                    "id": str(t.id),
+                    "title": t.title or "",
+                    "original_filename": t.original_filename or "",
+                    "content": t.transcription or "",  # Usar el nombre antiguo para compatibilidad
+                    "file_path": t.audio_path or "",   # Usar el nombre antiguo para compatibilidad
+                    "created_at": t.created_at.isoformat() if t.created_at else None,
+                    "user_id": str(t.user_id)
+                }
+                
+                result.append(trans_dict)
+                
+            except Exception as e:
+                logger.error(f"Error al procesar transcripción {t.id}: {str(e)}")
+                # Continuar con la siguiente transcripción
+        
+        logger.info(f"Procesadas correctamente {len(result)} transcripciones")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error al obtener transcripciones: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener transcripciones: {str(e)}"
+        )
 
 async def process_audio_file_simple(process_id: str):
     """
@@ -444,7 +546,7 @@ async def process_audio_file_simple(process_id: str):
                     
                     # Verificar si ya existe una transcripción con este process_id
                     existing = db.query(DBTranscription).filter(
-                        DBTranscription.file_path == file_path
+                        DBTranscription.audio_path == file_path
                     ).first()
                     
                     if not existing:
@@ -452,9 +554,10 @@ async def process_audio_file_simple(process_id: str):
                         db_transcription = DBTranscription(
                             title=f"Transcripción de {Path(file_path).name}",
                             original_filename=job.get("original_filename", Path(file_path).name),
-                            file_path=file_path,
-                            content=transcription,
-                            user_id=job["user_id"]
+                            audio_path=file_path,
+                            transcription=transcription,
+                            user_id=job["user_id"],
+                            created_at=datetime.utcnow()  # Establecer explícitamente la fecha de creación
                         )
                         db.add(db_transcription)
                         db.commit()
@@ -534,7 +637,7 @@ async def process_audio_file(process_id: str):
                     
                     # Verificar si ya existe una transcripción con este process_id
                     existing = db.query(DBTranscription).filter(
-                        DBTranscription.file_path == file_path
+                        DBTranscription.audio_path == file_path
                     ).first()
                     
                     if not existing:
@@ -542,9 +645,13 @@ async def process_audio_file(process_id: str):
                         db_transcription = DBTranscription(
                             title=f"Transcripción de {Path(file_path).name}",
                             original_filename=job.get("original_filename", Path(file_path).name),
-                            file_path=file_path,
-                            content=transcription,
-                            user_id=job["user_id"]
+                            audio_path=file_path,
+                            transcription=transcription,
+                            short_summary=job["results"].get("short_summary"),
+                            key_points=job["results"].get("key_points", []),
+                            action_items=job["results"].get("action_items", []),
+                            user_id=job["user_id"],
+                            created_at=datetime.utcnow()  # Establecer explícitamente la fecha de creación
                         )
                         db.add(db_transcription)
                         db.commit()

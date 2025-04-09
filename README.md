@@ -14,6 +14,7 @@ Sistema local para transcribir archivos de audio y exportar resultados utilizand
 - **Historial de transcripciones por usuario**
 - **Manejo robusto de estados de transcripción con notificaciones claras**
 - **Redirección automática a login al expirar el token JWT**
+- **Modelo de datos mejorado con soporte para proyectos, destacados y etiquetas**
 
 ## Estructura del Proyecto
 

@@ -136,6 +136,29 @@ Este script automatiza todo el proceso de actualización:
 5. Reconstruye el frontend
 6. Reinicia los servicios
 
+### Migración del Modelo de Datos (Release 1)
+
+Para aplicar la migración del modelo de datos del Release 1, debes ejecutar el script de migración en el servidor:
+
+```bash
+# Conectarse al servidor
+ssh -p 2222 root@134.199.218.48
+
+# Ir al directorio del backend
+cd /var/www/whisper-meeting/backend
+
+# Activar el entorno virtual
+source venv/bin/activate
+
+# Ejecutar el script de migración para actualizar la base de datos
+python database/migrate_db.py
+
+# Reiniciar el servicio del backend
+systemctl restart whisper-backend
+```
+
+Este script preservará los datos existentes mientras actualiza el esquema de la base de datos para soportar las nuevas funcionalidades.
+
 ## Método de Despliegue Manual (Alternativo)
 
 Si prefieres hacer el despliegue paso a paso, sigue estas instrucciones:

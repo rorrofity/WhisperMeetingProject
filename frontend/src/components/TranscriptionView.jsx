@@ -6,13 +6,23 @@ const TranscriptionView = ({ transcription, onDownload }) => {
 
   const handleCopyClick = async () => {
     try {
-      await navigator.clipboard.writeText(transcription);
+      // Verificar si transcription es un objeto o una cadena
+      const textToCopy = typeof transcription === 'object' ? 
+        transcription.transcription || transcription.content || 'No hay transcripción disponible' : 
+        transcription;
+      
+      await navigator.clipboard.writeText(textToCopy);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
       console.error('Error al copiar texto: ', err);
     }
   };
+
+  // Determinar el texto a mostrar
+  const displayText = typeof transcription === 'object' ? 
+    transcription.transcription || transcription.content || 'No hay transcripción disponible' : 
+    transcription || 'No hay transcripción disponible';
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-8">
@@ -38,7 +48,7 @@ const TranscriptionView = ({ transcription, onDownload }) => {
         </div>
       </div>
       <div className="border border-gray-200 rounded-md overflow-auto p-4 max-h-96 bg-gray-50">
-        <p className="whitespace-pre-line">{transcription || 'No hay transcripción disponible'}</p>
+        <p className="whitespace-pre-line">{displayText}</p>
       </div>
     </div>
   );

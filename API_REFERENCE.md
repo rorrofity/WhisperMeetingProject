@@ -84,10 +84,153 @@ GET /download/{process_id}
 **Respuesta:**
 - Archivo en el formato solicitado con los resultados de la transcripción y resúmenes
 
+## Endpoints de Autenticación y Usuario
+
+### Iniciar sesión
+
+```
+POST /api/users/token
+```
+
+**Parámetros:**
+- `username`: Nombre de usuario
+- `password`: Contraseña
+
+**Respuesta:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1...",
+  "token_type": "bearer"
+}
+```
+
+### Obtener historial de transcripciones
+
+```
+GET /api/transcriptions/
+```
+
+**Headers:**
+- `Authorization`: Bearer token
+
+**Respuesta:**
+```json
+[
+  {
+    "id": "uuid-string",
+    "title": "Transcripción de audio.mp3",
+    "original_filename": "audio.mp3",
+    "created_at": "2025-04-09T12:00:00",
+    "content": "Texto de la transcripción...",
+    "file_path": "/ruta/al/archivo/audio.mp3"
+  },
+  ...
+]
+```
+
+## Endpoints para el Modelo de Datos Release 1 (Nuevo)
+
+### Obtener proyectos del usuario
+
+```
+GET /api/projects/
+```
+
+**Headers:**
+- `Authorization`: Bearer token
+
+**Respuesta:**
+```json
+[
+  {
+    "id": "uuid-string",
+    "name": "Proyecto 1",
+    "description": "Descripción del proyecto",
+    "created_at": "2025-04-09T12:00:00",
+    "updated_at": "2025-04-09T12:30:00"
+  },
+  ...
+]
+```
+
+### Crear nuevo proyecto
+
+```
+POST /api/projects/
+```
+
+**Headers:**
+- `Authorization`: Bearer token
+
+**Parámetros:**
+```json
+{
+  "name": "Nombre del proyecto",
+  "description": "Descripción del proyecto"
+}
+```
+
+**Respuesta:**
+```json
+{
+  "id": "uuid-string",
+  "name": "Nombre del proyecto",
+  "description": "Descripción del proyecto",
+  "created_at": "2025-04-09T12:00:00",
+  "updated_at": "2025-04-09T12:00:00"
+}
+```
+
+### Destacar fragmento de transcripción
+
+```
+POST /api/highlights/
+```
+
+**Headers:**
+- `Authorization`: Bearer token
+
+**Parámetros:**
+```json
+{
+  "transcription_id": "uuid-string",
+  "text": "Texto destacado",
+  "start_offset": 10,
+  "end_offset": 50,
+  "note": "Nota sobre este destacado",
+  "tags": ["importante", "seguimiento"]
+}
+```
+
+**Respuesta:**
+```json
+{
+  "id": "uuid-string",
+  "transcription_id": "uuid-string",
+  "text": "Texto destacado",
+  "start_offset": 10,
+  "end_offset": 50,
+  "note": "Nota sobre este destacado",
+  "created_at": "2025-04-09T12:00:00",
+  "tags": [
+    {
+      "id": "uuid-string",
+      "name": "importante"
+    },
+    {
+      "id": "uuid-string",
+      "name": "seguimiento"
+    }
+  ]
+}
+```
+
 ## Códigos de Estado
 
 - `200`: Operación exitosa
 - `400`: Solicitud inválida
+- `401`: No autorizado
+- `403`: Prohibido
 - `404`: Recurso no encontrado
 - `500`: Error interno del servidor
 
@@ -112,3 +255,4 @@ curl -X GET http://localhost:8000/status/123e4567-e89b-12d3-a456-426614174000
 
 ```bash
 curl -X GET http://localhost:8000/download/123e4567-e89b-12d3-a456-426614174000?format=pdf -o resultados.pdf
+```

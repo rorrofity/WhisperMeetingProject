@@ -19,6 +19,10 @@ cd /var/www/whisper-meeting/backend
 source venv/bin/activate
 pip install -r requirements.txt
 
+# Ejecutar migración de base de datos para Release 1
+echo "=== Ejecutando migración de base de datos para Release 1 ==="
+python database/migrate_db.py
+
 # Si hay cambios en el frontend
 cd /var/www/whisper-meeting/frontend
 npm install

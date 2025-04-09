@@ -70,13 +70,13 @@ class TranscriptionUpdate(BaseModel):
 class Transcription(TranscriptionBase):
     id: str
     transcription: str
-    audio_path: str
+    audio_path: Optional[str] = ""
     short_summary: Optional[str] = None
     key_points: Optional[List[str]] = []
     action_items: Optional[List[str]] = []
     utterances_json: Optional[Dict[str, Any]] = None
     duration: Optional[float] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     user_id: str
     

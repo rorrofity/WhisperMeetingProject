@@ -7,7 +7,7 @@ fpdf==1.7.2
 transformers==4.33.2
 sentencepiece==0.1.99
 deepgram-sdk>=2.4.0
-openai>=0.27.2
+openai>=1.0.0
 python-dotenv>=0.19.0
 reportlab>=3.6.0
 langchain>=0.0.267

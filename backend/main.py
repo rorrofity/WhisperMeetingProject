@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
+import asyncio
 
 # Módulos internos de la aplicación - Modificamos las importaciones para que sean relativas
 from utils.audio_processor import AudioProcessor
@@ -134,15 +135,16 @@ async def upload_file_simple(
         "file_path": str(file_path),
         "original_filename": file.filename,
         "model_size": default_model,
+        "summary_method": "deepseek", # Usar Deepseek para resúmenes
         "user_id": current_user.id  # Asociar con el usuario actual
     }
     
     # Process in background
     if background_tasks:
-        background_tasks.add_task(process_audio_file_simple, process_id)
+        background_tasks.add_task(process_audio_file, process_id) # Usar process_audio_file en lugar de process_audio_file_simple
     else:
         # For testing without background tasks
-        await process_audio_file_simple(process_id)
+        await process_audio_file(process_id) # Usar process_audio_file en lugar de process_audio_file_simple
         
         # Guardar la transcripción en la base de datos cuando esté completa
         if jobs[process_id]["status"] == "completed":
@@ -175,7 +177,7 @@ async def upload_file_with_api_prefix(
 async def upload_file(
     file: UploadFile = File(...),
     model_size: str = Form(default_model),
-    summary_method: str = Form("local"),
+    summary_method: str = Form("deepseek"),
     background_tasks: BackgroundTasks = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -272,13 +274,69 @@ async def get_status_with_api_prefix(process_id: str):
 @app.get("/results/{process_id}")
 async def get_results(process_id: str):
     """
-    Get the results of a completed transcription job.
+    Get the results of a transcription job.
     
     Args:
         process_id: ID of the process to get results for
         
     Returns:
-        Transcription and summaries
+        Structured response with transcription and summaries
+    """
+    if process_id not in jobs:
+        raise HTTPException(status_code=404, detail=f"Process {process_id} not found")
+    
+    job = jobs[process_id]
+    
+    # Permitir obtener resultados parciales si el estado es:
+    # - completed (proceso finalizado)
+    # - transcription_complete (transcripción lista, resumen pendiente)
+    # - summarizing (generando resumen)
+    valid_states = ["completed", "transcription_complete", "summarizing"]
+    if job["status"] not in valid_states:
+        raise HTTPException(status_code=400, detail=f"Process {process_id} is not ready yet. Current status: {job['status']}")
+    
+    # Asegurarse de que el resultado incluya una estructura consistente
+    results = job["results"]
+    
+    # Si es un diccionario, asegurarse de que tenga la estructura esperada
+    if isinstance(results, dict):
+        # Si tiene 'text' pero no 'transcription', adaptar la estructura
+        if "transcription" not in results and "text" in results:
+            results["transcription"] = results["text"]
+            
+        # Asegurar que los campos de resumen existan y tengan formato consistente
+        if "short_summary" not in results:
+            results["short_summary"] = ""
+            
+        if "key_points" not in results:
+            results["key_points"] = []
+        elif isinstance(results["key_points"], str):
+            # Si key_points es una cadena, convertirla a lista
+            results["key_points"] = [point.strip() for point in results["key_points"].split("\n") if point.strip()]
+            
+        if "action_items" not in results:
+            results["action_items"] = []
+        elif isinstance(results["action_items"], str):
+            # Si action_items es una cadena, convertirla a lista
+            results["action_items"] = [item.strip() for item in results["action_items"].split("\n") if item.strip()]
+    
+    return results
+
+@app.get("/api/results/{process_id}")
+async def get_results_with_api_prefix(process_id: str):
+    """Duplicate endpoint for results with explicit /api prefix."""
+    return await get_results(process_id)
+
+@app.get("/summary/{process_id}")
+async def get_summary(process_id: str):
+    """
+    Get only the structured summary of a completed transcription job.
+    
+    Args:
+        process_id: ID of the process to get summary for
+        
+    Returns:
+        Structured summary with short_summary, key_points, and action_items
     """
     if process_id not in jobs:
         raise HTTPException(status_code=404, detail=f"Process {process_id} not found")
@@ -288,18 +346,28 @@ async def get_results(process_id: str):
     if job["status"] != "completed":
         raise HTTPException(status_code=400, detail=f"Process {process_id} is not completed yet")
     
-    # Asegurarse de que el resultado incluya el campo 'transcription'
     results = job["results"]
-    if isinstance(results, dict) and "transcription" not in results and "text" in results:
-        # Si el resultado tiene 'text' pero no 'transcription', adaptar la estructura
-        results = {"transcription": results["text"], **results}
+    summary = {}
+    
+    if isinstance(results, dict):
+        summary["short_summary"] = results.get("short_summary", "")
         
-    return results
+        key_points = results.get("key_points", [])
+        if isinstance(key_points, str):
+            key_points = [point.strip() for point in key_points.split("\n") if point.strip()]
+        summary["key_points"] = key_points
+        
+        action_items = results.get("action_items", [])
+        if isinstance(action_items, str):
+            action_items = [item.strip() for item in action_items.split("\n") if item.strip()]
+        summary["action_items"] = action_items
+    
+    return summary
 
-@app.get("/api/results/{process_id}")
-async def get_results_with_api_prefix(process_id: str):
-    """Duplicate endpoint for results with explicit /api prefix."""
-    return await get_results(process_id)
+@app.get("/api/summary/{process_id}")
+async def get_summary_with_api_prefix(process_id: str):
+    """Endpoint duplicado para obtener resumen con prefijo /api/."""
+    return await get_summary(process_id)
 
 @app.get("/download/{process_id}")
 async def download_results(process_id: str, format: str = "txt"):
@@ -482,7 +550,11 @@ async def get_user_transcriptions_with_api_prefix(
                     "content": t.transcription or "",  # Usar el nombre antiguo para compatibilidad
                     "file_path": t.audio_path or "",   # Usar el nombre antiguo para compatibilidad
                     "created_at": t.created_at.isoformat() if t.created_at else None,
-                    "user_id": str(t.user_id)
+                    "user_id": str(t.user_id),
+                    # Añadir campos de resumen
+                    "short_summary": t.short_summary or "",
+                    "key_points": t.key_points or [],
+                    "action_items": t.action_items or []
                 }
                 
                 result.append(trans_dict)
@@ -538,35 +610,6 @@ async def process_audio_file_simple(process_id: str):
             # Update status
             job["status"] = "completed"
             
-            # Guardar en la base de datos si el job tiene un usuario asociado
-            if "user_id" in job and job["user_id"]:
-                try:
-                    # Crear sesión de base de datos
-                    db = SessionLocal()
-                    
-                    # Verificar si ya existe una transcripción con este process_id
-                    existing = db.query(DBTranscription).filter(
-                        DBTranscription.audio_path == file_path
-                    ).first()
-                    
-                    if not existing:
-                        # Crear entrada en la base de datos
-                        db_transcription = DBTranscription(
-                            title=f"Transcripción de {Path(file_path).name}",
-                            original_filename=job.get("original_filename", Path(file_path).name),
-                            audio_path=file_path,
-                            transcription=transcription,
-                            user_id=job["user_id"],
-                            created_at=datetime.utcnow()  # Establecer explícitamente la fecha de creación
-                        )
-                        db.add(db_transcription)
-                        db.commit()
-                    
-                except Exception as db_error:
-                    logger.error(f"Error guardando transcripción en la base de datos: {str(db_error)}")
-                finally:
-                    db.close()
-            
         except Exception as e:
             # Update status to error
             job["status"] = "error"
@@ -609,6 +652,21 @@ async def process_audio_file(process_id: str):
             # Transcribe audio
             transcription = transcriber.transcribe(file_path)
             
+            # Actualizar estado y resultados parciales para que la transcripción sea visible
+            # mientras se genera el resumen
+            job["status"] = "transcription_complete"
+            job["results"] = {
+                "transcription": transcription,
+                "summary_status": "pending",  # Indica que el resumen está en proceso
+                "short_summary": "",
+                "key_points": [],
+                "action_items": []
+            }
+            
+            # Pausa para permitir que el frontend detecte el estado intermedio
+            logger.info("Estado actualizado a 'transcription_complete'. Esperando 3 segundos antes de continuar...")
+            await asyncio.sleep(3)
+            
             # Generate summaries
             job["status"] = "summarizing"
             
@@ -618,13 +676,13 @@ async def process_audio_file(process_id: str):
                 method=summary_method
             )
             
-            # Store results
-            job["results"] = {
-                "transcription": transcription,
+            # Update results with summaries
+            job["results"].update({
+                "summary_status": "complete",  # Indica que el resumen está listo
                 "short_summary": short_summary,
                 "key_points": key_points,
                 "action_items": action_items
-            }
+            })
             
             # Update status
             job["status"] = "completed"
@@ -654,8 +712,18 @@ async def process_audio_file(process_id: str):
                             created_at=datetime.utcnow()  # Establecer explícitamente la fecha de creación
                         )
                         db.add(db_transcription)
-                        db.commit()
+                    else:
+                        # Actualizar la entrada existente con los datos del resumen
+                        existing.short_summary = job["results"].get("short_summary")
+                        existing.key_points = job["results"].get("key_points", [])
+                        existing.action_items = job["results"].get("action_items", [])
+                        existing.updated_at = datetime.utcnow()  # Actualizar la fecha de modificación
                     
+                    # Commit para guardar los cambios
+                    db.commit()
+                    
+                    # Mantener este log ya que es informativo para operaciones importantes
+                    logger.info(f"Transcripción y resumen guardados correctamente en la base de datos para el proceso {process_id}")
                 except Exception as db_error:
                     logger.error(f"Error guardando transcripción en la base de datos: {str(db_error)}")
                 finally:

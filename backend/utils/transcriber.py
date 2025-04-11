@@ -139,3 +139,210 @@ class Transcriber:
         models_info.update(self.specialized_models)
         
         return models_info
+
+    def generate_summaries(self, transcription, method="deepseek"):
+        """
+        Genera resúmenes, puntos clave y elementos de acción a partir de la transcripción.
+        
+        Args:
+            transcription: Texto completo de la transcripción
+            method: Método para generar resúmenes ("deepseek" o "local")
+            
+        Returns:
+            Tupla de (short_summary, key_points, action_items)
+        """
+        logger.info(f"Generando resúmenes con método: {method}")
+        logger.info(f"Longitud de la transcripción: {len(transcription)} caracteres")
+        
+        try:
+            if method == "deepseek":
+                # Usar Deepseek API
+                logger.info("Utilizando Deepseek API para generar resúmenes")
+                short_summary, key_points, action_items = self._generate_summaries_with_deepseek(transcription)
+                
+                # Verificar resultados
+                logger.info(f"Resultados de Deepseek - Short summary: {len(short_summary)} caracteres")
+                logger.info(f"Resultados de Deepseek - Key points: {len(key_points)} puntos")
+                logger.info(f"Resultados de Deepseek - Action items: {len(action_items)} elementos")
+                
+                return short_summary, key_points, action_items
+            else:
+                # Usar método simple local
+                logger.info("Utilizando método local simple para generar resúmenes")
+                return self._generate_simple_summaries(transcription)
+        except Exception as e:
+            logger.error(f"Error en generate_summaries: {str(e)}", exc_info=True)
+            logger.info("Cambiando a método de respaldo debido a error")
+            return self._generate_simple_summaries(transcription)
+
+    def _generate_summaries_with_deepseek(self, transcription):
+        """
+        Genera resúmenes utilizando la API de Deepseek.
+        
+        Args:
+            transcription: Texto completo de la transcripción
+            
+        Returns:
+            Tupla de (short_summary, key_points, action_items)
+        """
+        try:
+            from openai import OpenAI
+            import json
+            import time
+            
+            # Obtener la API key de las variables de entorno
+            api_key = os.getenv("DEEPSEEK_API_KEY")
+            if not api_key:
+                logger.error("DEEPSEEK_API_KEY no configurada en archivo .env")
+                raise ValueError("DEEPSEEK_API_KEY no configurada. Por favor, añade tu clave API en el archivo .env")
+            
+            # Inicializar cliente de Deepseek (compatible con OpenAI)
+            client = OpenAI(
+                api_key=api_key,
+                base_url="https://api.deepseek.com",  # URL base sin /v1
+                timeout=120.0  # Aumentar timeout a 120 segundos
+            )
+            
+            # Configuración de límites de tokens
+            # La ventana de contexto total es de 64K tokens
+            # Reservamos 8K tokens para la salida (respuesta completa)
+            MAX_INPUT_TOKENS = 56000  # 64K - 8K para respuesta
+            
+            # Conversión aproximada de tokens a caracteres (varía según el idioma)
+            # Para español, una estimación conservadora es ~3.5 caracteres por token
+            MAX_INPUT_CHARACTERS = int(MAX_INPUT_TOKENS * 3.5)  # ≈ 196,000 caracteres
+            
+            # Truncar la transcripción si es muy larga
+            truncated = False
+            if len(transcription) > MAX_INPUT_CHARACTERS:
+                logger.warning(f"Transcripción muy larga ({len(transcription)} caracteres), truncando a {MAX_INPUT_CHARACTERS} caracteres...")
+                # Truncamos para dejar espacio para el prompt del sistema
+                # Restamos 2000 caracteres para el prompt del sistema (~570 tokens)
+                transcription = transcription[:MAX_INPUT_CHARACTERS - 2000]
+                truncated = True
+            
+            # Preparar el prompt para el resumen
+            system_prompt = """
+            Eres un asistente especializado en resumir transcripciones de reuniones en español.
+            Debes analizar la transcripción proporcionada y generar:
+            
+            1. Un resumen corto (TL;DR) de máximo 150 palabras que capture la esencia de la reunión
+            2. Una lista de puntos clave (máximo 7 puntos) que resalten las ideas principales discutidas
+            3. Una lista de elementos de acción o tareas pendientes identificadas en la reunión (si las hay)
+            
+            Responde ÚNICAMENTE en formato JSON con las siguientes claves:
+            - "short_summary": el resumen corto como texto
+            - "key_points": array de strings, cada uno representando un punto clave
+            - "action_items": array de strings, cada uno representando un elemento de acción
+            
+            Si la transcripción está truncada, enfócate en resumir la parte disponible sin mencionar que está incompleta.
+            """
+            
+            # Mensaje de usuario
+            user_message = f"Aquí está la transcripción de la reunión para resumir:"
+            if truncated:
+                user_message += " (Nota: Esta es la primera parte de una transcripción más larga)"
+            user_message += f"\n\n{transcription}"
+            
+            logger.info(f"Enviando solicitud a Deepseek API para generar resumen (longitud transcripción: {len(transcription)} caracteres)")
+            
+            # Sistema de reintentos
+            max_retries = 3
+            retry_delay = 5  # segundos
+            
+            for attempt in range(max_retries):
+                try:
+                    # Llamada a la API
+                    response = client.chat.completions.create(
+                        model="deepseek-chat",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_message}
+                        ],
+                        temperature=1.3,  # Temperatura para conversación general
+                        max_tokens=4096,  # Ajustar según sea necesario (máximo 8192)
+                        response_format={"type": "json_object"}  # Solicitar respuesta en formato JSON
+                    )
+                    
+                    # Si llegamos aquí, la llamada tuvo éxito
+                    break
+                    
+                except Exception as e:
+                    logger.warning(f"Intento {attempt+1}/{max_retries} falló: {str(e)}")
+                    if attempt < max_retries - 1:
+                        logger.info(f"Reintentando en {retry_delay} segundos...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Backoff exponencial
+                    else:
+                        # Agotamos los reintentos, lanzar excepción
+                        logger.error(f"No se pudo conectar a la API de Deepseek después de {max_retries} intentos")
+                        raise
+            
+            # Extraer la respuesta
+            result_text = response.choices[0].message.content
+            logger.debug(f"Respuesta recibida de Deepseek: {result_text[:200]}...")
+            
+            # Procesar el JSON
+            try:
+                result = json.loads(result_text)
+                
+                short_summary = result.get("short_summary", "")
+                key_points = result.get("key_points", [])
+                action_items = result.get("action_items", [])
+                
+                # Validar y limpiar los resultados
+                if not isinstance(short_summary, str):
+                    short_summary = str(short_summary) if short_summary else ""
+                
+                if not isinstance(key_points, list):
+                    key_points = [str(key_points)] if key_points else []
+                else:
+                    key_points = [str(point) for point in key_points if point]
+                
+                if not isinstance(action_items, list):
+                    action_items = [str(action_items)] if action_items else []
+                else:
+                    action_items = [str(item) for item in action_items if item]
+                
+                return short_summary, key_points, action_items
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"Error al procesar la respuesta JSON: {str(e)}")
+                logger.debug(f"Respuesta recibida: {result_text}")
+                raise ValueError(f"La API de Deepseek no devolvió un JSON válido: {str(e)}")
+                
+        except Exception as e:
+            logger.error(f"Error al generar resúmenes con Deepseek: {str(e)}")
+            logger.info("Utilizando método simple de fallback para generar resúmenes")
+            return self._generate_simple_summaries(transcription)
+
+    def _generate_simple_summaries(self, transcription):
+        """
+        Método simple de fallback para generar resúmenes básicos.
+        Útil cuando la API externa no está disponible.
+        
+        Args:
+            transcription: Texto completo de la transcripción
+            
+        Returns:
+            Tupla de (short_summary, key_points, action_items)
+        """
+        logger.info("Utilizando método simple para generar resumen (fallback)")
+        
+        # Resumen simple: primeras 150 palabras
+        words = transcription.split()
+        short_summary = " ".join(words[:min(150, len(words))])
+        
+        # Puntos clave simples: primeras frases de diferentes párrafos
+        paragraphs = transcription.split('\n\n')
+        key_points = []
+        for i, para in enumerate(paragraphs[:7]):
+            if para.strip():
+                sentences = para.split('.')
+                if sentences[0].strip():
+                    key_points.append(sentences[0].strip() + '.')
+        
+        # No podemos extraer action items de forma simple
+        action_items = []
+        
+        return short_summary, key_points, action_items

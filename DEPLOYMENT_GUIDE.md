@@ -39,6 +39,7 @@ pip install gunicorn
 # Crear archivo .env
 cat > .env << 'ENDENV'
 DEEPGRAM_API_KEY=tu_clave_api_aqui
+DEEPSEEK_API_KEY=tu_clave_deepseek_aqui
 TRANSCRIPTION_MODEL=nova-2
 LANGUAGE=es-419
 HOST=0.0.0.0

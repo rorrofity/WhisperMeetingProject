@@ -153,16 +153,16 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
                   Título
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
                   Archivo Original
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
                   Fecha
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-auto">
                   Acciones
                 </th>
               </tr>
@@ -170,7 +170,7 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
             <tbody className="bg-white divide-y divide-gray-200">
               {transcriptions.map((transcription) => (
                 <tr key={transcription.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 truncate max-w-xs">
                     <button
                       onClick={() => onSelectTranscription(transcription)}
                       className="text-primary-600 hover:text-primary-800 font-medium"
@@ -178,13 +178,13 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
                       {transcription.title || 'Sin título'}
                     </button>
                   </td>
-                  <td className="px-6 py-4 text-gray-700">
+                  <td className="px-6 py-4 text-gray-700 truncate max-w-xs">
                     {transcription.original_filename || 'Desconocido'}
                   </td>
                   <td className="px-6 py-4 text-gray-700">
                     {formatDate(transcription.created_at)}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right whitespace-nowrap">
                     <button
                       onClick={() => onSelectTranscription(transcription)}
                       className="text-blue-600 hover:text-blue-800 mx-2"

@@ -39,7 +39,7 @@ A continuación se detallan las 9 historias de usuario funcionales a implementar
 
 ### HU2. Visualización clara de transcripción y resumen
 
-**Estado:** Parcialmente implementada
+**Estado:** Implementada completamente
 
 **Como** usuario  
 **Quiero** ver el texto transcrito y el resumen en una interfaz clara  
@@ -319,14 +319,14 @@ A continuación se detalla el plan de implementación ágil para el desarrollo d
 - ✅ Actualizar modelos de SQLAlchemy y esquemas Pydantic
 - ✅ Implementar validaciones de datos
 
-### Etapa 1: HU2 - Visualización clara de transcripción y resumen (1 semana)
-- **Backend**: 
+### Etapa 1: HU2 - Visualización clara de transcripción y resumen ✅ (Completado: 11 de abril de 2025)
+- ✅ **Backend**: 
   - Implementar endpoint para obtener resumen estructurado
   - Mejorar la estructura de respuesta de `/results/{process_id}`
-- **Frontend**: 
+- ✅ **Frontend**: 
   - Crear componentes para visualizar resumen con secciones colapsables
   - Implementar visualización separada de `short_summary`, `key_points`, `action_items`
-- **Pruebas**: 
+- ✅ **Pruebas**: 
   - Validar visualización correcta y comportamiento de colapso/expansión
   - Verificar manejo de casos donde no existe resumen
 

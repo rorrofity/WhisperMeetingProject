@@ -6,6 +6,8 @@ Sistema local para transcribir archivos de audio y exportar resultados utilizand
 
 - Carga de archivos de audio (.mp3, .mp4, .wav, .m4a)
 - Transcripción automática con la API de Deepgram 
+- **Generación de resúmenes automáticos con Deepseek API**
+- **Extracción de puntos clave y elementos de acción del contenido de la reunión**
 - Procesamiento directo de archivos grandes sin segmentación
 - Procesamiento y normalización de audio con FFmpeg
 - Descarga de resultados en formato TXT
@@ -28,7 +30,7 @@ WhisperMeetingProject/
 │   ├── utils/            # Utilidades para procesamiento
 │   │   ├── __init__.py   
 │   │   ├── audio_processor.py  # Procesamiento de archivos de audio
-│   │   └── transcriber.py      # Transcripción con Deepgram
+│   │   └── transcriber.py      # Transcripción con Deepgram y resúmenes con Deepseek
 │   ├── auth/             # Sistema de autenticación
 │   │   ├── __init__.py
 │   │   ├── jwt.py        # Autenticación con JWT

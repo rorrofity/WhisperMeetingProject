@@ -5,6 +5,7 @@ import 'filepond/dist/filepond.min.css';
 import axios from 'axios';
 import Header from './components/Header';
 import TranscriptionView from './components/TranscriptionView';
+import SummaryView from './components/SummaryView';
 import TranscriptionHistory from './components/TranscriptionHistory';
 import Auth from './components/Auth';
 import Footer from './components/Footer';
@@ -28,6 +29,7 @@ function AppContent() {
   const [error, setError] = useState(null);
   const [processId, setProcessId] = useState(null);
   const [transcription, setTranscription] = useState(null);
+  const [summaries, setSummaries] = useState(null); // Estado para almacenar resúmenes estructurados
   const [originalFilename, setOriginalFilename] = useState(null); // Guardar el nombre original del archivo
   const [showHistory, setShowHistory] = useState(false);
   const [selectedTranscriptionTitle, setSelectedTranscriptionTitle] = useState(null);
@@ -59,6 +61,7 @@ function AppContent() {
 
       // Limpiar cualquier transcripción anterior y reiniciar estados
       setTranscription(null);
+      setSummaries(null);
       setSuccess(false);
       setShowCompleted(false);
       setSelectedTranscriptionTitle(null);
@@ -124,6 +127,7 @@ function AppContent() {
       let statusCheckAttempts = 0;
       const MAX_STATUS_CHECK_ATTEMPTS = 3;
       let completedDetected = false;
+      const startTime = Date.now();
 
       const statusInterval = setInterval(async () => {
         try {
@@ -164,6 +168,85 @@ function AppContent() {
               setProgressMessage('Transcribiendo audio con Deepgram (esto puede tomar varios minutos)...');
               setProgress(80);
               break;
+            case 'transcription_complete':
+              setProgressMessage('Transcripción lista. Generando resumen (esto puede tomar hasta 2 minutos)...');
+              setProgress(90);
+              
+              // Obtener resultados parciales (solo transcripción)
+              try {
+                const partialResultsResponse = await axios.get(`${API_URL}/api/results/${jobId}`, {
+                  headers: {
+                    'Authorization': `Bearer ${token}`
+                  }
+                });
+                
+                if (partialResultsResponse.data && partialResultsResponse.data.transcription) {
+                  // Mostrar la transcripción mientras se genera el resumen
+                  const summaryData = {
+                    summary_status: 'pending',
+                    short_summary: '',
+                    key_points: [],
+                    action_items: []
+                  };
+                  
+                  // Usar la función unificada para mostrar la transcripción
+                  handleTranscriptionCompleted(
+                    partialResultsResponse.data.transcription,
+                    summaryData,
+                    originalFilename 
+                      ? `Transcripción de ${originalFilename}` 
+                      : "Transcripción completada"
+                  );
+                  
+                  // Cambiar la frecuencia de consultas después de mostrar la transcripción
+                  // para reducir el número de solicitudes
+                  clearInterval(statusInterval);
+                  
+                  // Establecer un nuevo intervalo con menor frecuencia (cada 3 segundos)
+                  const summaryInterval = setInterval(async () => {
+                    try {
+                      const summaryStatusResponse = await axios.get(`${API_URL}/api/status/${jobId}`, {
+                        headers: {
+                          'Authorization': `Bearer ${token}`
+                        }
+                      });
+                      
+                      // Si el resumen está listo, obtener los resultados
+                      if (summaryStatusResponse.data.status === 'completed') {
+                        clearInterval(summaryInterval);
+                        console.log('Obteniendo resultados del proceso:', jobId);
+                        
+                        const finalResults = await axios.get(`${API_URL}/api/results/${jobId}`, {
+                          headers: {
+                            'Authorization': `Bearer ${token}`
+                          }
+                        });
+                        
+                        // Actualizar solo los resúmenes
+                        if (finalResults.data && finalResults.data.transcription) {
+                          const finalSummaryData = {
+                            summary_status: 'complete',
+                            short_summary: finalResults.data.short_summary || '',
+                            key_points: finalResults.data.key_points || [],
+                            action_items: finalResults.data.action_items || []
+                          };
+                          
+                          setSummaries(finalSummaryData);
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Error consultando estado de resumen:', error);
+                    }
+                  }, 3000); // Consultar cada 3 segundos
+                }
+              } catch (error) {
+                console.error('Error obteniendo resultados parciales:', error);
+              }
+              break;
+            case 'summarizing':
+              setProgressMessage('Generando resumen de la reunión...');
+              setProgress(95);
+              break;
             case 'completed':
               setProgressMessage('Transcripción completada. Los resultados están disponibles.');
               setProgress(100);
@@ -179,14 +262,21 @@ function AppContent() {
                 console.log("Resultados recibidos:", resultsResponse.data);
                 
                 if (resultsResponse.data && resultsResponse.data.transcription) {
-                  // Usar la nueva función unificada
-                  const title = file && file.name 
-                    ? `Transcripción de ${file.name}` 
-                    : "Transcripción completada";
+                  // Preparar objeto de resumen estructurado
+                  const summaryData = {
+                    summary_status: resultsResponse.data.summary_status || 'complete',
+                    short_summary: resultsResponse.data.short_summary || '',
+                    key_points: resultsResponse.data.key_points || [],
+                    action_items: resultsResponse.data.action_items || []
+                  };
                   
+                  // Usar la nueva función unificada
                   handleTranscriptionCompleted(
                     resultsResponse.data.transcription,
-                    title
+                    summaryData,
+                    file && file.name 
+                      ? `Transcripción de ${file.name}` 
+                      : "Transcripción completada"
                   );
                   
                   console.log("Transcripción y vista actualizadas correctamente");
@@ -249,7 +339,7 @@ function AppContent() {
             }
           }
         }
-      }, 5000); // Verificar cada 5 segundos
+      }, 1000); // Consultar el estado cada 1 segundo en lugar de cada 5 segundos
 
     } catch (error) {
       console.error('Error processing file:', error);
@@ -259,12 +349,13 @@ function AppContent() {
   };
 
   // Esta función se ejecuta cuando se detecta que una transcripción ha sido completada
-  const handleTranscriptionCompleted = (transcriptionText, title) => {
+  const handleTranscriptionCompleted = (transcriptionText, summaryData, title) => {
     // Limpiar cualquier estado de error previo
     setError(null);
     
-    // Establecer los datos de la transcripción
+    // Establecer los datos de la transcripción y resumen
     setTranscription(transcriptionText);
+    setSummaries(summaryData);
     setSelectedTranscriptionTitle(title);
     
     // Detener la animación de procesamiento y mostrar éxito
@@ -272,7 +363,6 @@ function AppContent() {
     setSuccess(true);
     setShowCompleted(true);
     
-    // Log para debug
     console.log("[handleTranscriptionCompleted] Transcripción cargada correctamente");
   };
 
@@ -323,8 +413,25 @@ function AppContent() {
   };
 
   const handleSelectHistoryTranscription = (selectedTranscription) => {
+    // Verificar si la transcripción tiene datos de resumen
+    const hasSummaryData = selectedTranscription.short_summary || 
+                           (Array.isArray(selectedTranscription.key_points) && selectedTranscription.key_points.length > 0) || 
+                           (Array.isArray(selectedTranscription.action_items) && selectedTranscription.action_items.length > 0);
+    
+    // Extraer los datos de resumen de la transcripción seleccionada
+    const summaryData = {
+      summary_status: hasSummaryData ? 'complete' : 'pending',
+      short_summary: selectedTranscription.short_summary || '',
+      key_points: Array.isArray(selectedTranscription.key_points) ? selectedTranscription.key_points : [],
+      action_items: Array.isArray(selectedTranscription.action_items) ? selectedTranscription.action_items : []
+    };
+    
     // Usar nuestra función unificada para manejar la selección del historial
-    handleTranscriptionCompleted(selectedTranscription.content, selectedTranscription.title);
+    handleTranscriptionCompleted(
+      selectedTranscription.content || selectedTranscription.transcription, 
+      summaryData,
+      selectedTranscription.title
+    );
     
     // Guardar el ID de la transcripción seleccionada del historial
     setProcessId(selectedTranscription.id);
@@ -336,6 +443,7 @@ function AppContent() {
   // Limpiar completamente el estado y reiniciar para una nueva transcripción
   const clearTranscription = () => {
     setTranscription(null);
+    setSummaries(null);
     setFile(null);
     setProcessId(null);
     setProgress(0);
@@ -388,11 +496,22 @@ function AppContent() {
             });
             console.log('Resultados de la transcripción:', resultsResponse.data);
             
-            // Actualizar el estado con la transcripción
-            if (resultsResponse.data.transcription) {
-              setTranscription(resultsResponse.data.transcription);
+            // Extraer los datos del resultado
+            const resultData = resultsResponse.data;
+            
+            // Preparar objeto de resumen estructurado
+            const summaryData = {
+              summary_status: resultsResponse.data.summary_status || 'complete',
+              short_summary: resultsResponse.data.short_summary || '',
+              key_points: resultsResponse.data.key_points || [],
+              action_items: resultsResponse.data.action_items || []
+            };
+            
+            // Actualizar el estado con la transcripción y resumen
+            if (resultData.transcription) {
               handleTranscriptionCompleted(
-                resultsResponse.data.transcription,
+                resultData.transcription,
+                summaryData,
                 `Transcripción de ${originalFilename || 'audio'}`
               );
             } else {
@@ -474,7 +593,7 @@ function AppContent() {
         </div>
       </div>
       
-      <main className="container max-w-4xl mx-auto px-4 py-8 flex-grow">
+      <main className="container mx-auto px-4 py-8 flex-grow" style={{ maxWidth: showHistory ? '80%' : '4xl' }}>
         {showHistory ? (
           <TranscriptionHistory onSelectTranscription={handleSelectHistoryTranscription} />
         ) : (
@@ -499,11 +618,19 @@ function AppContent() {
                 
                 {/* Vista de transcripción */}
                 {transcription && (
-                  <TranscriptionView 
-                    transcription={transcription} 
-                    title={selectedTranscriptionTitle}
-                    onDownload={handleDownload} 
-                  />
+                  <>
+                    {summaries && (
+                      <SummaryView 
+                        summaries={summaries} 
+                        onCleanup={clearTranscription}
+                      />
+                    )}
+                    <TranscriptionView 
+                      transcription={transcription} 
+                      title={selectedTranscriptionTitle}
+                      onDownload={handleDownload} 
+                    />
+                  </>
                 )}
               </>
             ) : (

@@ -1,6 +1,5 @@
 // Configuración de la API
-const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'http://134.199.218.48'  // URL de producción (servidor) sin el prefijo /api
-  : 'http://localhost:8000';  // URL de desarrollo (local)
+const API_URL = import.meta.env.VITE_API_URL;
+// Ahora API_URL será https://www.rocketflow.cl/api/ en producción y http://localhost:8000/api/ en desarrollo, según el archivo .env
 
 export { API_URL };

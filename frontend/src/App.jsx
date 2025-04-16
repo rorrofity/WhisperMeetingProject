@@ -11,7 +11,7 @@ import Auth from './components/Auth';
 import Footer from './components/Footer';
 import { FiUpload, FiCpu, FiCheck, FiX, FiLogOut } from 'react-icons/fi';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { API_URL } from './config';
+import { API_URL } from './config'; // Asegúrate de que API_URL use la variable de entorno
 
 // Register FilePond plugins
 registerPlugin(FilePondPluginFileValidateType);
@@ -75,7 +75,7 @@ function AppContent() {
       const formData = new FormData();
       formData.append('file', currentFile);
 
-      const response = await axios.post(`${API_URL}/api/upload-file/`, formData, {
+      const response = await axios.post(`${API_URL}/upload-file/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
@@ -148,7 +148,7 @@ function AppContent() {
           }
 
           console.log(`Consultando estado del proceso: ${jobId}`);
-          const statusResponse = await axios.get(`${API_URL}/api/status/${jobId}`, {
+          const statusResponse = await axios.get(`${API_URL}/status/${jobId}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -174,7 +174,7 @@ function AppContent() {
               
               // Obtener resultados parciales (solo transcripción)
               try {
-                const partialResultsResponse = await axios.get(`${API_URL}/api/results/${jobId}`, {
+                const partialResultsResponse = await axios.get(`${API_URL}/results/${jobId}`, {
                   headers: {
                     'Authorization': `Bearer ${token}`
                   }
@@ -205,7 +205,7 @@ function AppContent() {
                   // Establecer un nuevo intervalo con menor frecuencia (cada 3 segundos)
                   const summaryInterval = setInterval(async () => {
                     try {
-                      const summaryStatusResponse = await axios.get(`${API_URL}/api/status/${jobId}`, {
+                      const summaryStatusResponse = await axios.get(`${API_URL}/status/${jobId}`, {
                         headers: {
                           'Authorization': `Bearer ${token}`
                         }
@@ -216,7 +216,7 @@ function AppContent() {
                         clearInterval(summaryInterval);
                         console.log('Obteniendo resultados del proceso:', jobId);
                         
-                        const finalResults = await axios.get(`${API_URL}/api/results/${jobId}`, {
+                        const finalResults = await axios.get(`${API_URL}/results/${jobId}`, {
                           headers: {
                             'Authorization': `Bearer ${token}`
                           }
@@ -254,7 +254,7 @@ function AppContent() {
                 
               try {
                 console.log(`Obteniendo resultados del proceso: ${jobId}`);
-                const resultsResponse = await axios.get(`${API_URL}/api/results/${jobId}`, {
+                const resultsResponse = await axios.get(`${API_URL}/results/${jobId}`, {
                   headers: {
                     'Authorization': `Bearer ${token}`
                   }
@@ -315,7 +315,7 @@ function AppContent() {
             console.log(`Demasiados errores consecutivos (${statusCheckAttempts}). Verificando en la base de datos...`);
             try {
               // Verificar en el historial si la transcripción está completada
-              const historyResponse = await axios.get(`${API_URL}/api/transcriptions/user`, {
+              const historyResponse = await axios.get(`${API_URL}/transcriptions/user`, {
                 headers: {
                   'Authorization': `Bearer ${token}`
                 }
@@ -377,7 +377,7 @@ function AppContent() {
       setProgressMessage('Preparando archivo para descarga...');
       
       // Obtener el blob del archivo
-      const response = await axios.get(`${API_URL}/api/download/${processId}?format=txt`, {
+      const response = await axios.get(`${API_URL}/download/${processId}?format=txt`, {
         headers: {
           'Authorization': `Bearer ${token}`
         },
@@ -480,7 +480,7 @@ function AppContent() {
         
         try {
           // Verificar el estado primero
-          const statusResponse = await axios.get(`${API_URL}/api/status/${processId}`, {
+          const statusResponse = await axios.get(`${API_URL}/status/${processId}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -489,7 +489,7 @@ function AppContent() {
           
           if (statusResponse.data.status === 'completed') {
             // Si está completo, obtener los resultados
-            const resultsResponse = await axios.get(`${API_URL}/api/results/${processId}`, {
+            const resultsResponse = await axios.get(`${API_URL}/results/${processId}`, {
               headers: {
                 'Authorization': `Bearer ${token}`
               }

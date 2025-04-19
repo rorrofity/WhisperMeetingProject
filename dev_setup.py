@@ -47,7 +47,7 @@ def print_banner():
     print(banner)
 
 def setup_environment():
-    """Configura el entorno de desarrollo añadiendo las rutas necesarias al PYTHONPATH."""
+    """Configura el entorno de desarrollo añadiendo las rutas necesarias al PYTHONPATH y verifica .env.development."""
     # Obtener rutas absolutas
     global PROJECT_DIR
     PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -55,11 +55,50 @@ def setup_environment():
     BACKEND_DIR = os.path.join(PROJECT_DIR, 'backend')
     global FRONTEND_DIR
     FRONTEND_DIR = os.path.join(PROJECT_DIR, 'frontend')
-    
+
     # Configurar variables de entorno
     os.environ['PYTHONPATH'] = f"{PROJECT_DIR}:{BACKEND_DIR}:{os.environ.get('PYTHONPATH', '')}"
-    
     print(f"PYTHONPATH configurado: {os.environ['PYTHONPATH']}")
+
+    # Verificar .env.development
+    env_path = os.path.join(FRONTEND_DIR, '.env.development')
+    vite_url = 'VITE_API_URL=http://localhost:8000/api'
+    if not os.path.exists(env_path):
+        with open(env_path, 'w') as f:
+            f.write(vite_url + '\n')
+        print(f"{Colors.WARNING}* Se creó .env.development con VITE_API_URL por defecto (sin barra final){Colors.ENDC}")
+    else:
+        with open(env_path) as f:
+            content = f.read()
+        # Verifica que la línea esté y no tenga barra final
+        import re
+        match = re.search(r'^VITE_API_URL=(.+)$', content, re.MULTILINE)
+        if match:
+            url = match.group(1).strip()
+            if url.endswith('/'):
+                print(f"{Colors.FAIL}✗ VITE_API_URL en .env.development termina en barra. Corrígelo a: {vite_url}{Colors.ENDC}")
+            elif url != 'http://localhost:8000/api':
+                print(f"{Colors.WARNING}! VITE_API_URL en .env.development es distinto de lo esperado: {url}{Colors.ENDC}")
+        else:
+            print(f"{Colors.WARNING}! .env.development no contiene VITE_API_URL. Agrégalo como: {vite_url}{Colors.ENDC}")
+
+    # Chequeo de rutas '/api/' hardcodeadas en el frontend
+    import glob
+    import fnmatch
+    js_files = glob.glob(os.path.join(FRONTEND_DIR, 'src', '**', '*.js*'), recursive=True)
+    found = False
+    for jsfile in js_files:
+        with open(jsfile, encoding='utf-8') as f:
+            lines = f.readlines()
+        for idx, line in enumerate(lines):
+            if "/api/" in line and 'VITE_API_URL' not in line and 'import.meta.env' not in line:
+                if not found:
+                    print(f"{Colors.WARNING}! Posible ruta '/api/' hardcodeada detectada en:{Colors.ENDC}")
+                    found = True
+                print(f"  {jsfile} (línea {idx+1}): {line.strip()}")
+    if not found:
+        print(f"{Colors.GREEN}✓ No se detectaron rutas '/api/' hardcodeadas en el frontend.{Colors.ENDC}")
+
 
 def initialize_database():
     """Inicializa la base de datos si es necesario usando SQLAlchemy directamente."""
@@ -274,7 +313,7 @@ def handle_signal(sig, frame):
 
 def main():
     """Función principal para iniciar la aplicación."""
-    # Configurar el entorno
+    # Configurar el entorno y advertir sobre .env y rutas
     setup_environment()
     
     # Imprimir banner

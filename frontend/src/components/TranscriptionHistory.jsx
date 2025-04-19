@@ -53,7 +53,7 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
       try {
         setLoading(true);
         
-        const response = await axios.get(`${API_URL}/api/transcriptions/`, {
+        const response = await axios.get(`${API_URL}/transcriptions/`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -85,7 +85,7 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
     }
     
     try {
-      await axios.delete(`${API_URL}/api/transcriptions/${id}`, {
+      await axios.delete(`${API_URL}/transcriptions/${id}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

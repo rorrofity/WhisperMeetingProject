@@ -2,6 +2,8 @@
 
 Esta guía proporciona instrucciones sobre cómo desplegar el proyecto Whisper Meeting Transcriber en un Droplet de DigitalOcean y cómo mantenerlo.
 
+> **IMPORTANTE:** El sitio de producción se encuentra en https://www.rocketflow.cl y utiliza HTTPS para todas las comunicaciones. El frontend obtiene la URL de la API desde la variable de entorno `VITE_API_URL` (ver sección de configuración). No agregues `/api` manualmente en el código frontend.
+
 ## Información del Servidor
 
 - **Proveedor**: DigitalOcean
@@ -50,8 +52,13 @@ ENDENV
 
 # Configurar frontend
 cd /var/www/whisper-meeting/frontend
+# Configura el archivo .env.production:
+# VITE_API_URL=https://www.rocketflow.cl/api
+# (en desarrollo, usa .env.development con VITE_API_URL=http://localhost:8000/api)
 npm install
 npm run build
+
+# Verifica que tu código frontend use `${API_URL}` para todas las llamadas y no hardcodee `/api` en las rutas.
 
 # Configurar servicio para el backend
 cat > /etc/systemd/system/whisper-backend.service << 'ENDSERVICE'

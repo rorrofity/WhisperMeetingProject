@@ -550,19 +550,8 @@ function AppContent() {
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Header />
-        
-        <main className="flex-grow container mx-auto px-4 py-8 flex flex-col items-center justify-center">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-4">Bienvenido a la App de Transcripción</h1>
-            <p className="text-gray-600 mb-8">Inicia sesión o regístrate para comenzar a transcribir tus archivos de audio.</p>
-          </div>
-          
-          <Auth />
-        </main>
-        
-        <Footer />
+      <div className="min-h-screen flex flex-col">
+        <Auth />
       </div>
     );
   }

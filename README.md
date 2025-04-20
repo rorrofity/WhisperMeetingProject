@@ -164,6 +164,11 @@ Para desplegar esta aplicación en un servidor de producción, sigue los pasos d
 
 ### Consideraciones Importantes para el Despliegue
 
+- El sitio de producción está disponible de forma segura en https://www.rocketflow.cl
+- El frontend obtiene la URL base de la API desde la variable de entorno `VITE_API_URL`:
+  - `.env.production`: `VITE_API_URL=https://www.rocketflow.cl/api`
+  - `.env.development`: `VITE_API_URL=http://localhost:8000/api`
+- **No agregues `/api` manualmente en las rutas de tu código frontend. Usa siempre `${API_URL}` para construir las llamadas.**
 - Asegúrate de que tu archivo `.env` contenga todas las variables necesarias
 - Sigue al pie de la letra la configuración del servicio systemd, incluyendo la variable `PYTHONPATH`
 - Ejecuta correctamente los pasos de inicialización de la base de datos

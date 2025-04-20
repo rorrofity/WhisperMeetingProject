@@ -85,6 +85,19 @@ find /var/www/whisper-meeting/backend/temp/ -type f | wc -l
 
 ## Monitoreo y Solución de Problemas
 
+### Verificación de HTTPS y configuración del frontend
+
+- Asegúrate de que el sitio de producción (https://www.rocketflow.cl) utiliza HTTPS correctamente.
+- Verifica que el archivo `.env.production` del frontend contenga:
+  ```
+  VITE_API_URL=https://www.rocketflow.cl/api
+  ```
+- En desarrollo, usa:
+  ```
+  VITE_API_URL=http://localhost:8000/api
+  ```
+- **No agregues `/api` manualmente en las rutas de tu código frontend. Usa siempre `${API_URL}`.**
+
 ### Verificar Estado de Servicios
 
 ```bash

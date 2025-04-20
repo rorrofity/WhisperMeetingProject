@@ -4,9 +4,16 @@ Este documento describe los endpoints disponibles en la API del backend.
 
 ## Base URL
 
+**Desarrollo:**
 ```
-http://localhost:8000
+http://localhost:8000/api
 ```
+**Producción:**
+```
+https://www.rocketflow.cl/api
+```
+
+> **Nota:** El frontend obtiene la base URL de la variable de entorno `VITE_API_URL` definida en `.env.development` (local) o `.env.production` (producción). No agregues `/api` manualmente en el código, solo usa `${API_URL}`.
 
 ## Endpoints
 
@@ -107,7 +114,7 @@ POST /api/users/token
 ### Obtener historial de transcripciones
 
 ```
-GET /api/transcriptions/
+GET /transcriptions/
 ```
 
 **Headers:**
@@ -236,10 +243,17 @@ POST /api/highlights/
 
 ## Ejemplos
 
-### Ejemplo de solicitud de transcripción
+### Ejemplo de solicitud de transcripción (entorno seguro)
 
 ```bash
-curl -X POST http://localhost:8000/upload-file/ \
+# Producción (HTTPS)
+curl -X POST https://www.rocketflow.cl/api/upload-file/ \
+  -F "file=@./ruta/a/mi/audio.mp3" \
+  -F "model_size=nova-3" \
+  -F "summary_method=local"
+
+# Desarrollo (HTTP)
+curl -X POST http://localhost:8000/api/upload-file/ \
   -F "file=@./ruta/a/mi/audio.mp3" \
   -F "model_size=nova-3" \
   -F "summary_method=local"
@@ -248,11 +262,11 @@ curl -X POST http://localhost:8000/upload-file/ \
 ### Ejemplo de verificación de estado
 
 ```bash
-curl -X GET http://localhost:8000/status/123e4567-e89b-12d3-a456-426614174000
+curl -X GET https://www.rocketflow.cl/api/status/123e4567-e89b-12d3-a456-426614174000
 ```
 
 ### Ejemplo de descarga de resultados
 
 ```bash
-curl -X GET http://localhost:8000/download/123e4567-e89b-12d3-a456-426614174000?format=pdf -o resultados.pdf
+curl -X GET https://www.rocketflow.cl/api/download/123e4567-e89b-12d3-a456-426614174000?format=pdf -o resultados.pdf
 ```

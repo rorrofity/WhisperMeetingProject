@@ -110,10 +110,14 @@ A continuación se detallan las 9 historias de usuario funcionales a implementar
 **Funcionalidad:**
 - Visualización de historial de transcripciones del usuario actual
 - Acceso directo a cada una
+- Paginación (15 elementos por página)
+- Ordenamiento por título y fecha (ascendente/descendente)
 
 **Criterios de aceptación:**
 - Se muestra título, fecha, duración, estado
 - El usuario puede hacer clic para abrir cada transcripción
+- Los controles de paginación permiten navegar entre páginas
+- Los encabezados de columna 'Título' y 'Fecha' permiten ordenar la tabla
 
 ---
 

@@ -1,0 +1,116 @@
+
+## Descripción del Proyecto
+Rocketflow es una plataforma SaaS que ayuda a equipos UX/Product a capturar, transcribir, resumir y analizar entrevistas con usuarios.
+
+## Stack Técnico
+- **Frontend:** React 18 + Vite + TailwindCSS
+- **Backend:** FastAPI + SQLAlchemy + Pydantic
+- **Base de Datos:** SQLite / PostgreSQL
+- **Procesamiento de Audio:** Deepgram SDK + FFmpeg
+- **Resumen automático:** Deepseek API
+- **Autenticación:** JWT
+- **Despliegue:** DigitalOcean
+
+## Estructura de Proyecto
+```bash
+.
+├── frontend/
+│   ├── components/
+│   ├── contexts/
+│   ├── App.jsx
+│   └── config.ts
+├── backend/
+│   ├── main.py
+│   ├── routers/
+│   ├── models/
+│   ├── transcriber.py
+│   └── utils/
+```
+
+## Convenciones de Código
+- Para APIS, considerar que El frontend obtiene la base URL de la variable de entorno `VITE_API_URL` definida en `.env.development` (local) o `.env.production` (producción). No agregues `/api` manualmente en el código, solo usa `${API_URL}`.
+- Endpoints deben devolver estructuras claras.
+- Tipado explícito en FastAPI.
+- Separación entre componentes y servicios en React.
+- Validar archivos y entradas antes de procesar.
+- Documentar siempre funciones públicas.
+
+## Testing y Verificación
+- Validar tipos MIME.
+- Mensajes de error claros en frontend.
+- Logs útiles en integraciones Deepgram y Deepseek.
+
+## Reglas IA Específicas
+- Usar MCP Context7 para toda consulta a librerías/frameworks.
+- Marcar en comentarios la aplicación de reglas globales.
+- No sobreescribir funciones clave sin validación previa.
+- Seguir patrón de validación y almacenamiento en `jobs{}`.
+
+## Modos de Operación
+
+### GOLDEN RULE
+Operar en uno de estos modos y anunciarlo al inicio:
+
+- **DEBUGGING MODE**
+- **FEATURE PLANNING MODE**
+- **IMPLEMENTATION MODE**
+- **PROJECT MANAGEMENT MODE**
+
+### Global Rules Siempre Activas
+- No disculpas.
+- No agregar funcionalidades no solicitadas.
+- Manejar procesos del servidor de desarrollo.
+- Razonamiento paso a paso en tareas complejas.
+- Procedimiento estricto de acceso a archivos.
+
+### Debugging Mode
+1. Hipótesis de causas.
+2. Análisis con principios básicos.
+3. Propuesta de validaciones mínimas.
+4. Simulación (si aplica).
+5. Preguntar aclaraciones si necesario.
+6. Propuesta de corrección mínima.
+7. Implementación de fix (si es aprobado).
+8. Verificación de server dev.
+9. Actualización de Project Management si aplica.
+
+### Feature Planning & Implementation Mode
+1. Entender alcance a fondo.
+2. Hacer preguntas claves.
+3. Proponer plan concreto.
+4. Esperar aprobación explícita.
+5. Implementar paso a paso.
+6. Reportar avances.
+7. Finalizar y verificar.
+8. Actualizar Project Management si aplica.
+
+### Project Management Mode
+- Actualizar site_structure.md si se agregan componentes.
+- Actualizar database_schema.md si hay cambios de base.
+- Actualizar change_log.md tras cada feature completa.
+- Mover tareas completadas en To Do List, marcando `[x]` y eliminando subtareas.
+
+## Seguridad
+- No subir archivos `.env`.
+- Validar todos los inputs y uploads.
+- No mostrar trazas de error completas al usuario.
+
+## Integración con MCP Context7
+- Uso obligatorio para consultas de documentación.
+- Indicar en las respuestas si fue usada una referencia oficial mediante Context7.
+- Debes obligadamente indicar que estás yendo a buscar información al mcp de Context7. 
+
+# Referencias de la API de Whisper Meeting Transcriber
+
+## Base URL
+
+**Desarrollo:**
+```
+http://localhost:8000/api
+```
+**Producción:**
+```
+https://www.rocketflow.cl/api
+```
+
+> **IMPORTANTE** El frontend obtiene la base URL de la variable de entorno `VITE_API_URL` definida en `.env.development` (local) o `.env.production` (producción). No agregues `/api` manualmente en el código, solo usa `${API_URL}`.

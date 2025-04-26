@@ -60,3 +60,46 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
   background: #0369a1;
 }
+
+/* Estilos personalizados para FilePond en App.jsx */
+.custom-filepond-container .filepond--root {
+    height: auto !important;
+    min-height: 150px; /* Mantener altura mínima para el área de soltar */
+    background-color: transparent !important; /* Hacer transparente */
+    border: none !important; /* Quitar borde interno */
+    padding: 0 !important; /* Quitar padding interno */
+}
+
+.custom-filepond-container .filepond--panel-root {
+    background-color: transparent !important; /* Hacer transparente */
+    border: none !important; /* Quitar borde interno */
+    padding: 0 !important; /* Quitar padding interno */
+}
+
+.custom-filepond-container .filepond--drop-label {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: inherit; /* Heredar altura mínima */
+    width: 100%; /* Asegurar que ocupe el ancho */
+    padding: 0 !important; /* Quitar padding interno */
+    background-color: transparent !important; /* Hacer transparente */
+}
+
+/* [SF] Estilo para el panel del archivo subido */
+.custom-filepond-container .filepond--item-panel {
+    background-color: #E9F6FF !important; /* Color de fondo azul muy claro */
+    border-radius: 0.5rem; /* Añadir bordes redondeados si se desea */
+}
+
+/* [SF] Estilo para el texto dentro del panel del archivo subido */
+.custom-filepond-container .filepond--file-info-main,
+.custom-filepond-container .filepond--file-info-sub {
+    color: #1E40AF !important; /* Azul oscuro para contraste */
+}
+
+/* Opcional: Ajustar tamaño de fuente del botón si es necesario */
+/* .custom-filepond-container .filepond--label-action {
+    font-size: 0.9rem;
+} */

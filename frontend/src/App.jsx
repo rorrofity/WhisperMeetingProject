@@ -9,7 +9,7 @@ import SummaryView from './components/SummaryView';
 import TranscriptionHistory from './components/TranscriptionHistory';
 import Auth from './components/Auth';
 import Footer from './components/Footer';
-import { FiUpload, FiCpu, FiCheck, FiX, FiLogOut } from 'react-icons/fi';
+import { FiUpload, FiCpu, FiCheck, FiX, FiLogOut, FiUploadCloud } from 'react-icons/fi';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { API_URL } from './config'; // Asegúrate de que API_URL use la variable de entorno
 
@@ -330,7 +330,6 @@ function AppContent() {
                 console.log('Transcripción encontrada en el historial como completada');
                 setProgressMessage('¡Transcripción completada! Disponible en el historial.');
                 setProgress(100);
-                setProcessing(false);
                 completedDetected = true;
                 clearInterval(statusInterval);
               }
@@ -557,30 +556,15 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Header />
-      
-      <div className="bg-primary-600 text-white py-2 px-4">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center">
-            <span className="font-medium">Usuario: {currentUser.username}</span>
-          </div>
-          <div className="flex space-x-4">
-            <button
-              onClick={toggleHistory}
-              className="text-white hover:text-gray-200 text-sm font-medium flex items-center"
-            >
-              {showHistory ? 'Nueva Transcripción' : 'Ver Historial'}
-            </button>
-            <button
-              onClick={handleLogout}
-              className="text-white hover:text-gray-200 text-sm font-medium flex items-center"
-            >
-              <FiLogOut className="mr-1" /> Cerrar Sesión
-            </button>
-          </div>
-        </div>
-      </div>
+    // Cambiar bg-gray-50 por el gradiente del login
+    <div className="min-h-screen bg-gradient-to-br from-primary-100 to-primary-50 flex flex-col">
+      {/* Pasar las funciones toggleHistory y handleLogout al Header actualizado */}
+      {/* Pasar también si estamos en la vista de historial */}
+      <Header 
+        onHistoryClick={toggleHistory} 
+        onLogoutClick={handleLogout} 
+        isHistoryView={showHistory} 
+      />
       
       <main className="container mx-auto px-4 py-8 flex-grow" style={{ maxWidth: showHistory ? '80%' : '4xl' }}>
         {showHistory ? (
@@ -623,67 +607,63 @@ function AppContent() {
                 )}
               </>
             ) : (
-              <>
-                <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-                  <h1 className="text-3xl font-bold text-gray-800 mb-6">Cargar Archivo de Audio</h1>
-                  
-                  <div className="mb-6">
-                    <FilePond
-                      ref={filePondRef}
-                      allowFileTypeValidation={true}
-                      acceptedFileTypes={['audio/mp3', 'audio/wav', 'video/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/mpeg']}
-                      labelFileTypeNotAllowed="Formato de archivo inválido"
-                      fileValidateTypeLabelExpectedTypes="Se esperan archivos de audio (MP3, WAV, MP4, M4A)"
-                      labelIdle='Arrastra y suelta tu archivo de audio aquí o <span class="filepond--label-action">Selecciona</span>'
-                      oninit={() => console.log('FilePond instance initialized')}
-                      onupdatefiles={(fileItems) => {
-                        console.log('Archivos actualizados', fileItems);
-                        setFile(fileItems.length > 0 ? fileItems[0].file : null);
-                      }}
-                      disabled={processing}
-                    />
+              <div className="w-full max-w-lg bg-white p-8 rounded-xl shadow-lg mx-auto mt-10">
+                <div className="filepond-container custom-filepond-container mt-6 p-12 border-2 border-dashed border-blue-300 rounded-lg bg-white text-center min-h-56 flex flex-col justify-center">
+                  <FilePond
+                    ref={filePondRef}
+                    files={file ? [file] : []}
+                    labelIdle={`
+                        <svg stroke="currentColor" fill="none" stroke-width="1.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10 mb-3 mx-auto" style="color: #163042;" xmlns="http://www.w3.org/2000/svg"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        <span class="filepond--label-action inline-block py-2 px-5 bg-[#E9F6FE] text-blue-800 font-medium rounded-md hover:bg-[#d0eefc] transition duration-150 ease-in-out cursor-pointer no-underline"> Seleccionar archivo </span>
+                        <div class="text-[11px] text-gray-500 mt-2">Archivos permitidos: MP3, WAV, M4A, MP4 (máx 100MB)</div>
+                    `}
+                    onupdatefiles={(fileItems) => {
+                      // Manejar solo el último archivo agregado
+                      const newFile = fileItems[0] ? fileItems[0].file : null;
+                      setFile(newFile);
+                      // Limpiar el estado al seleccionar un nuevo archivo si ya había uno procesado
+                      if (transcription || summaries || showCompleted) {
+                        clearTranscription(); // Asegura limpiar todo estado anterior
+                      } else {
+                        setError(null); // Limpiar errores al seleccionar nuevo archivo
+                        setSuccess(false);
+                      }
+                    }}
+                    allowMultiple={false}
+                    acceptedFileTypes={['audio/mp3', 'audio/wav', 'audio/mpeg', 'audio/x-m4a', 'audio/m4a', 'video/mp4']} 
+                    maxFileSize="500MB"
+                    labelFileTypeNotAllowed="Tipo de archivo no válido"
+                    labelMaxFileSizeExceeded="Archivo demasiado grande"
+                    labelMaxFileSize="El tamaño máximo es {filesize}"
+                    credits={false}
+                  />
+                  <div className="mt-4 text-center h-6"> {/* Altura fija para evitar saltos */}
+                    {processing && !error && (
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-2">
+                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
+                        <p className="text-sm text-blue-600 mt-1 animate-pulse">{progressMessage || 'Procesando...'}</p>
+                      </div>
+                    )}
+                    {error && !processing && <p className="text-sm text-red-600">Error: {error}</p>}
                   </div>
-                  
+                </div>
+                <div className="flex justify-center mt-8">
                   <button
                     onClick={handleProcessFile}
-                    disabled={(!file && !filePondRef.current?.getFiles().length) || processing}
-                    className={`w-full flex items-center justify-center py-3 px-4 rounded-md font-medium text-white ${
-                      (!file && !filePondRef.current?.getFiles().length) || processing
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : 'bg-primary-600 hover:bg-primary-700'
+                    disabled={processing || !file} // Deshabilitar si se está procesando o no hay archivo
+                    className={`mt-8 w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white transition duration-150 ease-in-out ${ 
+                      processing || !file
+                      ? 'bg-gray-400 cursor-not-allowed' // Estilo deshabilitado
+                      : 'bg-blue-700 hover:bg-blue-800' // Estilo activo
                     }`}
                   >
-                    {processing ? (
-                      <>
-                        <FiCpu className="animate-spin mr-2" />
-                        Procesando...
-                      </>
-                    ) : (
-                      <>
-                        <FiUpload className="mr-2" />
-                        Transcribir Audio
-                      </>
-                    )}
+                    {processing ? <FiCpu className="animate-spin mr-2" /> : <FiUploadCloud className="mr-2" />}
+                    {processing ? progressMessage || 'Procesando...' : 'Iniciar Transcripción'}
                   </button>
                 </div>
-                
-                {/* Barra de progreso solo visible durante el procesamiento */}
-                {processing && (
-                  <div className="bg-gray-100 rounded-lg p-4 mt-4">
-                    <div className="mb-2 flex justify-between items-center">
-                      <span className="text-gray-700">{progressMessage}</span>
-                      <span className="text-gray-700">{progress}%</span>
-                    </div>
-                    <div className="h-2 bg-gray-300 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary-600 transition-all duration-300"
-                        style={{ width: `${progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+              </div>
+            )
+          }
           </>
         )}
       </main>

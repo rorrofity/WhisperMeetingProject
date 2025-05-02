@@ -6,7 +6,7 @@ import 'filepond-plugin-file-validate-type/dist/filepond-plugin-file-validate-ty
 // No necesitamos importar FiUploadCloud explícitamente, FilePond maneja el icono.
 import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext'; // Asumiendo que usas AuthContext para el token
-import { apiBaseUrl } from '../config'; // Asegúrate que config.js exporta la URL base
+import { buildApiUrl } from '../config'; // [SF] Importamos buildApiUrl para normalizar las URL
 
 // Registrar el plugin de validación de tipo de archivo
 registerPlugin(FilePondPluginFileValidateType);
@@ -28,7 +28,7 @@ function AudioUpload() {
     // [IV] Validación de entrada: FilePond ya valida el tipo con acceptedFileTypes.
     // Se podrían añadir validaciones de tamaño aquí si fuera necesario.
 
-    axios.post(`${apiBaseUrl}/api/upload`, formData, { // Endpoint de subida (ajusta si es necesario)
+    axios.post(buildApiUrl('upload'), formData, { // [SF] Usamos buildApiUrl para evitar problemas con doble slash
       headers: {
         'Content-Type': 'multipart/form-data',
         'Authorization': `Bearer ${token}` // Enviar token JWT

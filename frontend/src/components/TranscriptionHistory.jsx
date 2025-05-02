@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { FiRefreshCw, FiFileText, FiTrash2, FiAlertCircle, FiChevronUp, FiChevronDown, FiChevronsLeft, FiChevronsRight, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
-import { API_URL } from '../config';
+import { API_URL, buildApiUrl } from '../config'; // [SF] Importamos también buildApiUrl
 
 const ITEMS_PER_PAGE = 15;
 
@@ -28,8 +28,7 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
       
       console.log('Haciendo solicitud con token:', token.substring(0, 15) + '...');
       
-      // [IV] Corregir URL - quitar el /api duplicado
-      const response = await axios.get(`${API_URL}/transcriptions/`, {
+      const response = await axios.get(buildApiUrl('transcriptions/'), {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -63,7 +62,7 @@ const TranscriptionHistory = ({ onSelectTranscription }) => {
     }
     
     try {
-      await axios.delete(`${API_URL}/transcriptions/${id}`, {
+      await axios.delete(buildApiUrl(`transcriptions/${id}`), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

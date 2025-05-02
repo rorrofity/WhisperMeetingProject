@@ -11,7 +11,7 @@ import Auth from './components/Auth';
 import Footer from './components/Footer';
 import { FiUpload, FiCpu, FiCheck, FiX, FiLogOut, FiUploadCloud } from 'react-icons/fi';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { API_URL } from './config'; // Asegúrate de que API_URL use la variable de entorno
+import { API_URL, buildApiUrl } from './config'; // [SF] Importamos buildApiUrl para normalizar las URLs
 
 // Register FilePond plugins
 registerPlugin(FilePondPluginFileValidateType);
@@ -75,7 +75,7 @@ function AppContent() {
       const formData = new FormData();
       formData.append('file', currentFile);
 
-      const response = await axios.post(`${API_URL}/upload-file/`, formData, {
+      const response = await axios.post(buildApiUrl('upload-file/'), formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`

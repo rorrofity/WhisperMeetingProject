@@ -148,7 +148,7 @@ function AppContent() {
           }
 
           console.log(`Consultando estado del proceso: ${jobId}`);
-          const statusResponse = await axios.get(`${API_URL}/status/${jobId}`, {
+          const statusResponse = await axios.get(buildApiUrl(`status/${jobId}`), {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -174,7 +174,7 @@ function AppContent() {
               
               // Obtener resultados parciales (solo transcripción)
               try {
-                const partialResultsResponse = await axios.get(`${API_URL}/results/${jobId}`, {
+                const partialResultsResponse = await axios.get(buildApiUrl(`results/${jobId}`), {
                   headers: {
                     'Authorization': `Bearer ${token}`
                   }
@@ -206,7 +206,7 @@ function AppContent() {
                   // Establecer un nuevo intervalo con menor frecuencia (cada 3 segundos)
                   const summaryInterval = setInterval(async () => {
                     try {
-                      const summaryStatusResponse = await axios.get(`${API_URL}/status/${jobId}`, {
+                      const summaryStatusResponse = await axios.get(buildApiUrl(`status/${jobId}`), {
                         headers: {
                           'Authorization': `Bearer ${token}`
                         }
@@ -217,7 +217,7 @@ function AppContent() {
                         clearInterval(summaryInterval);
                         console.log('Obteniendo resultados del proceso:', jobId);
                         
-                        const finalResults = await axios.get(`${API_URL}/results/${jobId}`, {
+                        const finalResults = await axios.get(buildApiUrl(`results/${jobId}`), {
                           headers: {
                             'Authorization': `Bearer ${token}`
                           }
@@ -258,7 +258,7 @@ function AppContent() {
                 
               try {
                 console.log(`Obteniendo resultados del proceso: ${jobId}`);
-                const resultsResponse = await axios.get(`${API_URL}/results/${jobId}`, {
+                const resultsResponse = await axios.get(buildApiUrl(`results/${jobId}`), {
                   headers: {
                     'Authorization': `Bearer ${token}`
                   }
@@ -320,7 +320,7 @@ function AppContent() {
             console.log(`Demasiados errores consecutivos (${statusCheckAttempts}). Verificando en la base de datos...`);
             try {
               // Verificar en el historial si la transcripción está completada
-              const historyResponse = await axios.get(`${API_URL}/transcriptions/user`, {
+              const historyResponse = await axios.get(buildApiUrl('transcriptions/user'), {
                 headers: {
                   'Authorization': `Bearer ${token}`
                 }
@@ -389,7 +389,7 @@ function AppContent() {
       setProgressMessage('Preparando archivo para descarga...');
       
       // Obtener el blob del archivo
-      const response = await axios.get(`${API_URL}/download/${processId}?format=txt`, {
+      const response = await axios.get(buildApiUrl(`download/${processId}?format=txt`), {
         headers: {
           'Authorization': `Bearer ${token}`
         },
@@ -492,7 +492,7 @@ function AppContent() {
         
         try {
           // Verificar el estado primero
-          const statusResponse = await axios.get(`${API_URL}/status/${processId}`, {
+          const statusResponse = await axios.get(buildApiUrl(`status/${processId}`), {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -501,7 +501,7 @@ function AppContent() {
           
           if (statusResponse.data.status === 'completed') {
             // Si está completo, obtener los resultados
-            const resultsResponse = await axios.get(`${API_URL}/results/${processId}`, {
+            const resultsResponse = await axios.get(buildApiUrl(`results/${processId}`), {
               headers: {
                 'Authorization': `Bearer ${token}`
               }

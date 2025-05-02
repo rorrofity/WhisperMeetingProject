@@ -185,7 +185,7 @@ A continuación se detallan las 9 historias de usuario funcionales a implementar
 
 ### HU9. Visualización de transcripción con marcas de tiempo
 
-**Estado:** No implementada
+**Estado:** Implementada completamente
 
 **Como** usuario  
 **Quiero** ver los timestamps junto al texto transcrito  
@@ -193,11 +193,19 @@ A continuación se detallan las 9 historias de usuario funcionales a implementar
 
 **Funcionalidad:**
 - Mostrar marcas de tiempo de inicio y fin por segmento
+- Agrupación inteligente de utterances para mejorar la legibilidad
+- Opción para mostrar/ocultar timestamps
 
 **Criterios de aceptación:**
 - El texto debe visualizarse agrupado por `utterance`, con timestamp de inicio visible
 - Debe poder formatearse como `[mm:ss]`
 - Las marcas de tiempo deben venir del backend (estructura `utterances_json`)
+- Los utterances deben tener un tamaño adecuado para facilitar la lectura
+
+**Mejoras implementadas:**
+- Se configuró el parámetro `utt_split=2.5` en la API de Deepgram para generar utterances más coherentes y menos fragmentados
+- Se implementó un botón para activar/desactivar la visualización de timestamps
+- Se optimizó la visualización para mostrar los timestamps en formato `[mm:ss]` de manera clara y no intrusiva
 
 ---
 

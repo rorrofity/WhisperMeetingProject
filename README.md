@@ -8,6 +8,8 @@ Sistema local para transcribir archivos de audio y exportar resultados utilizand
 - Transcripción automática con la API de Deepgram 
 - **Generación de resúmenes automáticos con Deepseek API**
 - **Extracción de puntos clave y elementos de acción del contenido de la reunión**
+- **Visualización de transcripciones con timestamps precisos por cada segmento de audio**
+- **Agrupación inteligente de utterances para mejorar la legibilidad de las transcripciones**
 - Procesamiento directo de archivos grandes sin segmentación
 - Procesamiento y normalización de audio con FFmpeg
 - Descarga de resultados en formato TXT

@@ -649,14 +649,19 @@ async def process_audio_file(process_id: str):
             # Update status
             job["status"] = "transcribing"
             
-            # Transcribe audio
-            transcription = transcriber.transcribe(file_path)
+            # Transcribe audio - Ahora recibimos también los utterances
+            transcription, utterances_data = transcriber.transcribe(file_path)
+            
+            # Asegurar que utterances_data sea una lista
+            if not isinstance(utterances_data, list):
+                utterances_data = [utterances_data] if utterances_data else []
             
             # Actualizar estado y resultados parciales para que la transcripción sea visible
             # mientras se genera el resumen
             job["status"] = "transcription_complete"
             job["results"] = {
                 "transcription": transcription,
+                "utterances_json": utterances_data,  # [SF] Guardamos los utterances en los resultados
                 "summary_status": "pending",  # Indica que el resumen está en proceso
                 "short_summary": "",
                 "key_points": [],
@@ -705,6 +710,7 @@ async def process_audio_file(process_id: str):
                             original_filename=job.get("original_filename", Path(file_path).name),
                             audio_path=file_path,
                             transcription=transcription,
+                            utterances_json=utterances_data,  # [SF] Guardamos los utterances en la base de datos
                             short_summary=job["results"].get("short_summary"),
                             key_points=job["results"].get("key_points", []),
                             action_items=job["results"].get("action_items", []),
@@ -713,10 +719,11 @@ async def process_audio_file(process_id: str):
                         )
                         db.add(db_transcription)
                     else:
-                        # Actualizar la entrada existente con los datos del resumen
+                        # Actualizar la entrada existente con los datos del resumen y utterances
                         existing.short_summary = job["results"].get("short_summary")
                         existing.key_points = job["results"].get("key_points", [])
                         existing.action_items = job["results"].get("action_items", [])
+                        existing.utterances_json = utterances_data  # [SF] Actualizar utterances si ya existe la transcripción
                         existing.updated_at = datetime.utcnow()  # Actualizar la fecha de modificación
                     
                     # Commit para guardar los cambios

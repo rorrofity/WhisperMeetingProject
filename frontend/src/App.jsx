@@ -190,8 +190,9 @@ function AppContent() {
                   };
                   
                   // Usar la función unificada para mostrar la transcripción
+                  // Pasamos el objeto completo de resultados en lugar de solo el texto
                   handleTranscriptionCompleted(
-                    partialResultsResponse.data.transcription,
+                    partialResultsResponse.data, // Objeto completo con transcription y utterances_json
                     summaryData,
                     originalFilename 
                       ? `Transcripción de ${originalFilename}` 
@@ -222,7 +223,7 @@ function AppContent() {
                           }
                         });
                         
-                        // Actualizar solo los resúmenes
+                        // Actualizar los resultados completos
                         if (finalResults.data && finalResults.data.transcription) {
                           const finalSummaryData = {
                             summary_status: 'complete',
@@ -231,6 +232,9 @@ function AppContent() {
                             action_items: finalResults.data.action_items || []
                           };
                           
+                          // Actualizar tanto la transcripción como los resúmenes
+                          // para asegurarnos de tener los utterances más recientes
+                          setTranscription(finalResults.data);
                           setSummaries(finalSummaryData);
                         }
                       }
@@ -271,8 +275,9 @@ function AppContent() {
                   };
                   
                   // Usar la nueva función unificada
+                  // Pasamos el objeto completo de resultados en lugar de solo el texto
                   handleTranscriptionCompleted(
-                    resultsResponse.data.transcription,
+                    resultsResponse.data, // Objeto completo con transcription y utterances_json
                     summaryData,
                     file && file.name 
                       ? `Transcripción de ${file.name}` 
@@ -348,12 +353,20 @@ function AppContent() {
   };
 
   // Esta función se ejecuta cuando se detecta que una transcripción ha sido completada
-  const handleTranscriptionCompleted = (transcriptionText, summaryData, title) => {
+  const handleTranscriptionCompleted = (transcriptionData, summaryData, title) => {
     // Limpiar cualquier estado de error previo
     setError(null);
     
     // Establecer los datos de la transcripción y resumen
-    setTranscription(transcriptionText);
+    // Si transcriptionData es un objeto, lo pasamos completo
+    // Si es una cadena, creamos un objeto con la transcripción y utterances vacíos
+    const transcriptionObj = typeof transcriptionData === 'object' 
+      ? transcriptionData 
+      : { transcription: transcriptionData, utterances_json: [] };
+    
+    console.log("[handleTranscriptionCompleted] Datos de transcripción:", transcriptionObj);
+    
+    setTranscription(transcriptionObj);
     setSummaries(summaryData);
     setSelectedTranscriptionTitle(title);
     

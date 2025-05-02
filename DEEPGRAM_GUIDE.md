@@ -29,6 +29,40 @@ Esta guía te ayudará a configurar las APIs necesarias para el funcionamiento c
 ## 3. Añadir Crédito a tu Cuenta de Deepgram
 
 1. Deepgram ofrece $200 en crédito gratuito al registrarte, lo que suele ser suficiente para empezar a probar el servicio.
+
+## 4. Configuración de Utterances y Timestamps en Deepgram
+
+### ¿Qué son los Utterances?
+
+Los utterances son segmentos de habla que Deepgram identifica como unidades semánticas significativas. Estos segmentos permiten dividir una transcripción larga en partes más pequeñas y manejables, cada una con su propio timestamp.
+
+### Parámetros de Configuración
+
+En nuestra implementación, utilizamos los siguientes parámetros para optimizar la detección de utterances:
+
+- **utterances=True**: Activa la detección de utterances en la API de Deepgram.
+- **utt_split=2.5**: Define la duración del silencio (en segundos) que Deepgram utiliza para determinar cuándo debe comenzar un nuevo utterance. Un valor más alto genera segmentos más largos y coherentes.
+
+### Beneficios de esta Configuración
+
+- **Mejor experiencia de usuario**: Los timestamps son más significativos y menos fragmentados.
+- **Mayor coherencia semántica**: Los segmentos tienden a contener ideas completas.
+- **Mejor legibilidad**: La transcripción es más fácil de seguir con menos interrupciones.
+
+### Personalización
+
+Si deseas ajustar el tamaño de los utterances, puedes modificar el valor del parámetro `utt_split` en el archivo `backend/utils/transcriber.py`:
+
+```python
+options = PrerecordedOptions(
+    ...
+    utterances=True,
+    utt_split=2.5  # Ajusta este valor según tus necesidades
+)
+```
+
+- **Valores más bajos** (ej: 0.8, valor predeterminado): Generan más utterances, más cortos y con timestamps más frecuentes.
+- **Valores más altos** (ej: 3.0 o 4.0): Generan menos utterances, más largos y con timestamps menos frecuentes.
 2. Para añadir fondos adicionales:
    - Ve a la sección "Billing" (Facturación) en el menú lateral.
    - Haz clic en "Add Payment Method" (Añadir método de pago).

@@ -65,7 +65,7 @@ class Transcriber:
             audio_path: Path to the audio file to transcribe
             
         Returns:
-            Transcription text
+            Tuple containing transcription text and utterances data
         """
         audio_path = Path(audio_path)
         logger.info(f"Iniciando transcripción de {audio_path} con Deepgram API")
@@ -80,7 +80,9 @@ class Transcriber:
                 smart_format=True,  # Formatea automáticamente números, puntuación, etc.
                 language="es-419",  # Idioma español de Latinoamérica (mejor para acentos latinoamericanos)
                 punctuate=True,     # Añade puntuación
-                diarize=True        # Identifica diferentes hablantes
+                diarize=True,       # Identifica diferentes hablantes
+                utterances=True,
+                utt_split=2.5    # [SF] Habilitamos explícitamente la detección de utterances
             )
             
             # Verificamos que el idioma sea español de Latinoamérica
@@ -94,9 +96,34 @@ class Transcriber:
                     options
                 )
             
-            # Extraemos la transcripción del formato de respuesta actualizado
+            # Extraemos la transcripción y los utterances del formato de respuesta
+            transcription = ""
+            utterances_data = []
+            
             if response and hasattr(response, "results"):
+                # Obtenemos la transcripción completa
                 transcription = response.results.channels[0].alternatives[0].transcript
+                
+                # Extraemos los utterances si están disponibles
+                if hasattr(response.results, "utterances"):
+                    utterances_data = response.results.utterances
+                    logger.info(f"Se detectaron {len(utterances_data)} utterances")
+                    
+                    # Si es un objeto con método to_dict, intentamos usarlo
+                    if hasattr(utterances_data, 'to_dict'):
+                        try:
+                            utterances_data = utterances_data.to_dict()
+                        except Exception as e:
+                            logger.warning(f"Error al convertir utterances a dict: {e}")
+                else:
+                    # Intentamos buscar en diferentes estructuras según la versión de la API
+                    try:
+                        response_dict = response.to_dict()
+                        if "utterances" in response_dict["results"]:
+                            utterances_data = response_dict["results"]["utterances"]
+                            logger.info(f"Se detectaron {len(utterances_data)} utterances (desde dict)")
+                    except (KeyError, TypeError) as e:
+                        logger.warning(f"No se pudieron extraer utterances: {e}")
             else:
                 # Si el formato de respuesta es diferente, intentamos obtener la transcripción
                 # de la manera más segura posible
@@ -104,12 +131,21 @@ class Transcriber:
                     # Para la v3.10.1 del SDK
                     response_dict = response.to_dict()
                     transcription = response_dict["results"]["channels"][0]["alternatives"][0]["transcript"]
+                    
+                    # Intentamos extraer utterances del diccionario
+                    if "utterances" in response_dict["results"]:
+                        utterances_data = response_dict["results"]["utterances"]
+                        logger.info(f"Se detectaron {len(utterances_data)} utterances (desde dict)")
                 except (KeyError, TypeError, IndexError) as e:
-                    logger.error(f"Error al extraer la transcripción: {e}", exc_info=True)
+                    logger.error(f"Error al extraer la transcripción o utterances: {e}", exc_info=True)
                     raise ValueError("No se pudo extraer la transcripción de la respuesta de Deepgram")
             
+            # Verificar que utterances_data sea siempre una lista
+            if not isinstance(utterances_data, list):
+                utterances_data = [utterances_data] if utterances_data else []
+            
             logger.info(f"Transcripción completada con éxito mediante Deepgram. Longitud: {len(transcription)} caracteres")
-            return transcription
+            return transcription, utterances_data
             
         except Exception as e:
             logger.error(f"Error durante la transcripción con Deepgram API: {e}", exc_info=True)

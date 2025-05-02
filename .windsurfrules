@@ -58,6 +58,7 @@ Operar en uno de estos modos y anunciarlo al inicio:
 
 ### Global Rules Siempre Activas
 - No disculpas.
+- En cada nueva conversación, debes revisar los archivos .md de la carpeta raíz del proyecto antes de comenzar
 - No agregar funcionalidades no solicitadas.
 - Manejar procesos del servidor de desarrollo.
 - Razonamiento paso a paso en tareas complejas.

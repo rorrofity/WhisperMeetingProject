@@ -1,24 +1,82 @@
-# Whisper Product Discovery SaaS – Documentación para Desarrollo (Versión 1)
+# RocketFlow – Documentación para Desarrollo
 
 ## 1. Contexto y Visión del Producto
 
-**Whisper Product Discovery SaaS** es una plataforma que ayuda a los equipos de producto, UX e innovación a capturar y estructurar aprendizajes reales desde entrevistas con usuarios. A partir de grabaciones de audio, la herramienta genera transcripciones automáticas enriquecidas, permite destacar frases clave, etiquetar problemas, y agrupar descubrimientos en proyectos.
+**RocketFlow** es una plataforma que ayuda a los equipos de producto, UX e innovación a capturar y estructurar aprendizajes reales desde entrevistas con usuarios. A partir de grabaciones de audio, la herramienta genera transcripciones automáticas enriquecidas, permite destacar frases clave, etiquetar problemas, y agrupar descubrimientos en proyectos.
 
 El objetivo principal es facilitar decisiones basadas en evidencia real, capturada directamente desde la voz del cliente.
 
-Esta primera versión (V1) del producto se centra en ofrecer una experiencia funcional mínima pero valiosa para equipos que están realizando discovery y necesitan una solución para organizar sus entrevistas de usuario y los insights que emergen de ellas.
+## 2. Plan de Desarrollo
 
----
+### Versión 1 – MVP Funcional de Transcripción y Organización
 
-## 2. Historias de Usuario – Versión 1
+Enfocado en entregar una herramienta usable y útil para registrar entrevistas, visualizar resúmenes, exportar resultados y organizar por proyectos.
 
-A continuación se detallan las 9 historias de usuario funcionales a implementar. Se indica en cada caso si la funcionalidad ya está implementada total o parcialmente.
+#### Funcionalidades Implementadas
+
+| Código | Nombre | Estado |
+|--------|--------|--------|
+| HU1 | Subida de grabaciones y transcripción automática | Completada |
+| HU2 | Visualización clara de transcripción y resumen | Completada |
+| HU5 | Historial de entrevistas subidas | Completada |
+| HU7 | Autenticación y gestión de sesión | Completada |
+| HU9 | Visualización de transcripción con marcas de tiempo | Completada |
+
+#### Funcionalidades Pendientes para Versión 1
+
+**HU8 - Exportación TXT con contenido completo**
+- El archivo debe tener el mismo nombre del audio original
+- Incluir utterances con marcas de tiempo [mm:ss]
+- Exportar resumen (short_summary, key_points, action_items)
+
+**HU6 - Organización por proyectos**
+- Crear, editar y eliminar proyectos
+- Visualizar lista de proyectos del usuario autenticado
+- Al subir un archivo, permitir asociarlo a un proyecto existente o crear uno nuevo
+- En historial, agrupar transcripciones por proyecto (expandible/collapsable)
+
+#### Funcionalidades Pospuestas (Post-MVP)
+
+Las siguientes historias se moverán al backlog para fases futuras:
+- HU3 - Destacar fragmentos clave
+- HU4 - Asignar etiquetas a frases destacadas
+
+### Versión 2 – MVP Discovery Contextualizado
+
+Este MVP es funcional y vendible. Aporta estructura, especialización del resumen y base para monetización.
+
+#### Nuevas Funcionalidades Planificadas
+
+**HU10 - Selección de metadatos y resumen contextual**
+- Al subir audio: seleccionar tipo de actividad y fase del discovery
+- El backend usa prompts especializados según selección
+- Devuelve resumen adaptado al contexto
+- Exporta .xml si es "levantamiento de procesos"
+- Salidas: .txt, .json, .xml (opcional)
+
+**HU11 - Sistema de pago**
+- Lógica de planes (Free, Pro, Team)
+- Restricciones por volumen o cantidad de transcripciones
+- Integración con pasarela (ej: Stripe, MercadoPago)
+
+**HU12 - Login con Google**
+- Iniciar sesión con cuenta de Google
+- Asociar con cuenta RocketFlow si ya existe con ese correo
+
+**HU13 - Look & Feel profesional**
+- Definir identidad visual definitiva
+- Ajustar colores, íconos y tipografía
+- Crear componentes coherentes y responsivos
+
+## 3. Historias de Usuario Detalladas
+
+A continuación se detallan las historias de usuario con sus especificaciones técnicas y criterios de aceptación. Se indica el estado actual de cada funcionalidad.
 
 ---
 
 ### HU1. Subida de audio y transcripción automática
 
-**Estado:** Implementada completamente
+**Estado:** Completada
 
 **Como** Product Manager  
 **Quiero** subir una grabación de una entrevista  
@@ -39,7 +97,7 @@ A continuación se detallan las 9 historias de usuario funcionales a implementar
 
 ### HU2. Visualización clara de transcripción y resumen
 
-**Estado:** Implementada completamente
+**Estado:** Completada
 
 **Como** usuario  
 **Quiero** ver el texto transcrito y el resumen en una interfaz clara  
@@ -55,15 +113,12 @@ A continuación se detallan las 9 historias de usuario funcionales a implementar
 - Si no existe resumen, debe indicarse claramente con un mensaje
 - El frontend debe consumir `GET /results/{process_id}`
 
-**Falta por implementar:**
-- Renderización del resumen en el frontend
-- Manejo visual de secciones colapsables
 
 ---
 
 ### HU3. Destacar fragmentos clave de la transcripción
 
-**Estado:** No implementada
+**Estado:** Pospuesta para versiones futuras
 
 **Como** usuario  
 **Quiero** poder marcar frases importantes del texto  
@@ -82,7 +137,7 @@ A continuación se detallan las 9 historias de usuario funcionales a implementar
 
 ### HU4. Asignar etiquetas a frases destacadas
 
-**Estado:** No implementada
+**Estado:** Pospuesta para versiones futuras
 
 **Como** usuario  
 **Quiero** poder etiquetar frases destacadas con categorías  
@@ -101,7 +156,7 @@ A continuación se detallan las 9 historias de usuario funcionales a implementar
 
 ### HU5. Historial de entrevistas subidas
 
-**Estado:** Implementada completamente
+**Estado:** Completada
 
 **Como** usuario  
 **Quiero** ver una lista de todas las entrevistas que he subido  
@@ -121,27 +176,30 @@ A continuación se detallan las 9 historias de usuario funcionales a implementar
 
 ---
 
-### HU6. Organización mínima por proyectos
+### HU6. Organización por proyectos
 
-**Estado:** No implementada
+**Estado:** Pendiente para Versión 1
 
 **Como** usuario  
 **Quiero** agrupar mis entrevistas por proyecto  
 **Para** mantener organizada la información según el contexto
 
 **Funcionalidad:**
+- En la sección de "Historial" el usuario puede ver las transcripciones por proyecto
+- El proyecto se debe listar y si tiene transcripciones, se puede abrir y colapsar
 - Al subir un archivo se puede asociar a un proyecto existente o crear uno nuevo
 
 **Criterios de aceptación:**
 - Cada transcripción debe tener un `project_id` asociado (opcional)
 - Se pueden listar los proyectos y ver las transcripciones por proyecto
 - Es posible renombrar o eliminar un proyecto vacío
+- Si hay alguna transcripción que no pertenece a un proyecto, debe listarlas en orden descendente por fecha
 
 ---
 
 ### HU7. Autenticación y gestión de sesión
 
-**Estado:** Implementada completamente
+**Estado:** Completada
 
 **Como** usuario nuevo  
 **Quiero** registrarme e iniciar sesión con mis credenciales  
@@ -159,33 +217,41 @@ A continuación se detallan las 9 historias de usuario funcionales a implementar
 
 ---
 
-### HU8. Exportación de resumen y destacados
+### HU8. Exportación de resumen y transcripción
 
-**Estado:** Parcialmente implementada
+**Estado:** ✅ Completado
 
 **Como** usuario  
-**Quiero** poder exportar el resumen y los fragmentos destacados  
+**Quiero** poder exportar el resumen y la transcripción completa  
 **Para** compartirlos con mi equipo o incluirlos en documentación
 
-**Funcionalidad:**
-- Exportación en `.txt` y `.pdf` (texto y resumen incluidos)
+**Funcionalidad implementada:**
+- Exportación en `.txt` con nombre del archivo original
+- Estructura clara con secciones bien definidas:
+  - Encabezado con nombre del archivo original
+  - Resumen estructurado (TL;DR, puntos clave, acciones)
+  - Transcripción completa con marcas de tiempo [mm:ss]
+- Soporte para transcripciones nuevas y existentes en historial
+- Manejo robusto de diferentes tipos de datos y formatos
 
-**Criterios de aceptación:**
-- El archivo exportado incluye:
+**Detalles técnicos:**
+- Implementación en endpoints `/download/{process_id}` y `/api/download/{process_id}`
+- Obtención de datos desde la base de datos o memoria según disponibilidad
+- Formato de marcas de tiempo: `[mm:ss]` para cada utterance
+- Inclusión de información de hablantes cuando está disponible
+
+**Criterios de aceptación cumplidos:**
+- ✅ El archivo exportado incluye:
   - `short_summary`, `key_points`, `action_items`
-  - Texto transcrito completo
-  - Lista de destacados y etiquetas
-- La descarga debe ser directa y sin pasos adicionales
-
-**Falta por implementar:**
-- Inclusión de resumen y destacados en el archivo `.txt`
-- Opción de exportar en `.pdf` (estilizado básico)
+  - Texto transcrito completo con marcas de tiempo
+- ✅ La descarga es directa y sin pasos adicionales
+- ✅ El formato facilita la lectura y referencia a partes específicas
 
 ---
 
 ### HU9. Visualización de transcripción con marcas de tiempo
 
-**Estado:** Implementada completamente
+**Estado:** Completada
 
 **Como** usuario  
 **Quiero** ver los timestamps junto al texto transcrito  
@@ -203,9 +269,9 @@ A continuación se detallan las 9 historias de usuario funcionales a implementar
 - Los utterances deben tener un tamaño adecuado para facilitar la lectura
 
 **Mejoras implementadas:**
-- Se configuró el parámetro `utt_split=2.5` en la API de Deepgram para generar utterances más coherentes y menos fragmentados
+- Se configuró el parámetro `utt_split=2.5` en la API de Deepgram para generar utterances más coherentes
 - Se implementó un botón para activar/desactivar la visualización de timestamps
-- Se optimizó la visualización para mostrar los timestamps en formato `[mm:ss]` de manera clara y no intrusiva
+- Se optimizó la visualización para mostrar los timestamps en formato `[mm:ss]`
 
 ---
 
@@ -321,105 +387,89 @@ User ───┬─── Project ───┬─── Transcription ───
 
 ---
 
-## 5. Plan de Implementación Ágil
+## 5. Plan de Implementación Ágil - Versión 1
 
-A continuación se detalla el plan de implementación ágil para el desarrollo del Release 1, organizado por historias de usuario completas (end-to-end) para entregar valor de forma incremental.
+A continuación se detalla el plan de implementación ágil actualizado para completar las funcionalidades pendientes de la Versión 1. Este plan se enfoca exclusivamente en las historias de usuario que faltan para cerrar el MVP inicial.
 
-### Etapa 0: Actualización del Modelo de Datos ✅ (Completado: 9 de abril de 2025)
-- ✅ Implementar el modelo de datos mejorado
-- ✅ Crear migraciones para preservar datos existentes
-- ✅ Actualizar modelos de SQLAlchemy y esquemas Pydantic
-- ✅ Implementar validaciones de datos
+### Funcionalidades ya completadas
 
-### Etapa 1: HU2 - Visualización clara de transcripción y resumen ✅ (Completado: 11 de abril de 2025)
-- ✅ **Backend**: 
-  - Implementar endpoint para obtener resumen estructurado
-  - Mejorar la estructura de respuesta de `/results/{process_id}`
-- ✅ **Frontend**: 
-  - Crear componentes para visualizar resumen con secciones colapsables
-  - Implementar visualización separada de `short_summary`, `key_points`, `action_items`
-- ✅ **Pruebas**: 
-  - Validar visualización correcta y comportamiento de colapso/expansión
-  - Verificar manejo de casos donde no existe resumen
+- ✅ **HU1 - Subida de audio y transcripción automática**
+- ✅ **HU2 - Visualización clara de transcripción y resumen**
+- ✅ **HU5 - Historial de entrevistas subidas**
+- ✅ **HU7 - Autenticación y gestión de sesión**
+- ✅ **HU9 - Visualización de transcripción con marcas de tiempo**
 
-### Etapa 2: HU9 - Visualización con marcas de tiempo (1 semana)
+### Plan para completar la Versión 1
+
+#### Etapa 1: HU8 - Exportación TXT con contenido completo (1 semana)
+
+**Objetivo**: Mejorar la funcionalidad de exportación para incluir toda la información relevante en un formato claro y utilizable.
+
 - **Backend**: 
-  - Modificar procesamiento para incluir timestamps formateados
-  - Estructurar la respuesta con formato `[mm:ss]`
-- **Frontend**: 
-  - Crear componente para mostrar timestamps junto al texto
-  - Implementar agrupación por `utterance`
-- **Pruebas**: 
-  - Verificar formato correcto y alineación de timestamps
-  - Validar consistencia con el audio original
+  - Modificar el endpoint de descarga para usar el nombre del archivo original
+  - Estructurar el contenido del archivo para incluir resumen y transcripción con marcas de tiempo
+  - Implementar formato de marcas de tiempo [mm:ss] en el texto exportado
 
-### Etapa 3: HU6 - Organización por proyectos (1.5 semanas)
+- **Frontend**: 
+  - Mejorar la interfaz de descarga para mostrar el progreso
+  - Implementar opción para seleccionar qué elementos incluir en la exportación
+
+- **Pruebas**: 
+  - Verificar que el archivo descargado tenga el nombre correcto
+  - Validar la inclusión de resumen, puntos clave y acciones
+  - Comprobar que las marcas de tiempo sean correctas
+
+#### Etapa 2: HU6 - Organización por proyectos (2 semanas)
+
+**Objetivo**: Implementar un sistema de organización por proyectos que permita agrupar transcripciones relacionadas.
+
 - **Backend**: 
-  - Crear endpoints CRUD para proyectos
-  - Implementar asociación entre proyectos y transcripciones
+  - Crear endpoints CRUD para proyectos: `GET/POST /projects/`, `GET/PUT/DELETE /projects/{id}`
+  - Implementar endpoint para listar transcripciones por proyecto: `GET /projects/{id}/transcriptions`
+  - Modificar endpoint de subida para permitir asociar a un proyecto
+
 - **Frontend**: 
-  - Implementar componentes de gestión de proyectos
-  - Crear navegación y filtrado por proyectos
+  - Implementar componente `ProjectList` para listar y gestionar proyectos
+  - Crear interfaz para asignar transcripciones a proyectos durante la subida
+  - Modificar la vista de historial para agrupar por proyectos (expandible/colapsable)
+  - Implementar funcionalidad para reasignar transcripciones entre proyectos
+
 - **Pruebas**: 
-  - Validar creación, edición, eliminación de proyectos
-  - Verificar asignación y reasignación de transcripciones a proyectos
+  - Validar creación, edición y eliminación de proyectos
+  - Verificar que las transcripciones se asignen correctamente
+  - Comprobar que la vista de historial agrupe correctamente
+  - Validar que las transcripciones sin proyecto se muestren en orden cronológico inverso
 
-### Etapa 4: HU3 - Destacar fragmentos (1 semana)
-- **Backend**: 
-  - Crear endpoints CRUD para destacados
-  - Implementar asociación con transcripciones y timestamps
-- **Frontend**: 
-  - Implementar selección de texto y guardado como destacados
-  - Crear visualización de listado de destacados
-- **Pruebas**: 
-  - Verificar selección, guardado y visualización de destacados
-  - Validar asociación correcta con tiempos de inicio y fin
+#### Etapa 3: Integración final y Despliegue (1 semana)
 
-### Etapa 5: HU4 - Asignar etiquetas a frases (1 semana)
-- **Backend**: 
-  - Crear endpoints CRUD para etiquetas
-  - Implementar asociación entre destacados y etiquetas
-- **Frontend**: 
-  - Implementar componentes de creación y selección de etiquetas
-  - Crear visualización de etiquetas como chips de color
-- **Pruebas**: 
-  - Validar creación y edición de etiquetas
-  - Verificar asignación de múltiples etiquetas a destacados
+- **Pruebas de integración**:
+  - Validar flujo completo desde subida hasta exportación
+  - Verificar organización por proyectos y navegación
+  - Comprobar rendimiento con múltiples transcripciones y proyectos
 
-### Etapa 6: HU8 - Exportación de resumen y destacados (1 semana)
-- **Backend**: 
-  - Mejorar endpoint de descarga para incluir resumen y destacados
-  - Implementar exportación en formato PDF
-- **Frontend**: 
-  - Implementar opciones avanzadas de exportación (TXT/PDF)
-  - Crear interfaz de descarga directa
-- **Pruebas**: 
-  - Verificar contenido y formato de archivos exportados
-  - Validar inclusión de todos los elementos requeridos
+- **Optimización**:
+  - Implementar caché para resultados de transcripción
+  - Optimizar carga de datos con paginación
+  - Implementar política de retención para archivos temporales
 
-### Etapa 7: Integración final y Despliegue (0.5 semanas)
-- Pruebas de integración completas
-- Actualización de documentación
-- Despliegue a producción
+- **Documentación y Despliegue**:
+  - Actualizar documentación técnica y de usuario
+  - Realizar despliegue a producción
+  - Configurar monitoreo para detectar problemas
 
-**Tiempo total estimado**: 7 semanas
+**Tiempo total estimado**: 4 semanas
 
-### Consideraciones de Implementación
+### Consideraciones de Implementación para Versión 1
 
 1. **Nuevos Endpoints a Implementar**:
    - Proyectos: `GET/POST /projects/`, `GET/PUT/DELETE /projects/{id}`, `GET /projects/{id}/transcriptions`
-   - Destacados: `GET/POST /transcriptions/{id}/highlights`, `GET/PUT/DELETE /highlights/{id}`
-   - Etiquetas: `GET/POST /tags/`, `GET/PUT/DELETE /tags/{id}`, `POST/DELETE /highlights/{id}/tags`
+   - Exportación: Mejorar `GET /transcriptions/{id}/export` para incluir resumen y marcas de tiempo
 
 2. **Nuevos Componentes Frontend**:
    - `ProjectList`: Listado de proyectos con opciones CRUD
    - `ProjectDetail`: Vista detallada de un proyecto con sus transcripciones
-   - `TranscriptionWithTimestamps`: Visualización de transcripción con marcas de tiempo
-   - `HighlightSelector`: Componente para seleccionar y guardar fragmentos destacados
-   - `TagSelector`: Componente para crear y seleccionar etiquetas
-   - `TagChip`: Visualización de etiquetas como chips de color
-   - `SummaryViewer`: Componente para visualizar resúmenes estructurados
-   - `ExportOptions`: Opciones avanzadas de exportación
+   - `ProjectSelector`: Selector de proyecto durante la subida de archivos
+   - `ExportOptions`: Opciones básicas de exportación
 
 3. **Consideraciones de Escalabilidad**:
    - Implementar índices para optimizar consultas frecuentes
@@ -427,6 +477,11 @@ A continuación se detalla el plan de implementación ágil para el desarrollo d
    - Implementar política de retención para archivos temporales
    - Implementar caché para resultados de transcripción
    - Optimizar carga de datos en el frontend con paginación
+
+4. **Mejoras de Experiencia de Usuario**:
+   - Implementar feedback visual durante procesos largos (carga, transcripción, exportación)
+   - Mejorar la navegación entre proyectos y transcripciones
+   - Optimizar la visualización en dispositivos móviles
 
 ---
 

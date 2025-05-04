@@ -409,15 +409,103 @@ async def download_results(process_id: str, format: str = "txt"):
     
     if format == "txt":
         txt_path = job_dir / "transcription.txt"
+        
+        # [IV] Validación de inputs: Obtener los datos necesarios con valores por defecto seguros
+        transcription = job["results"].get("transcription", "")
+        short_summary = job["results"].get("short_summary", "")
+        key_points = job["results"].get("key_points", [])
+        action_items = job["results"].get("action_items", [])
+        utterances = job["results"].get("utterances_json", [])
+        
+        # Crear el contenido estructurado del archivo
+        content = []
+        
+        # Añadir encabezado
+        content.append(f"TRANSCRIPCIÓN: {original_filename}")
+        content.append("=" * 50)
+        content.append("")
+        
+        # Añadir sección de resumen
+        content.append("RESUMEN")
+        content.append("-" * 50)
+        content.append("")
+        
+        # TL;DR
+        content.append("TL;DR:")
+        content.append(short_summary)
+        content.append("")
+        
+        # Puntos Clave
+        content.append("PUNTOS CLAVE:")
+        if isinstance(key_points, list):
+            for i, point in enumerate(key_points, 1):
+                content.append(f"{i}. {point}")
+        else:
+            content.append(str(key_points))
+        content.append("")
+        
+        # Acciones a Realizar
+        content.append("ACCIONES A REALIZAR:")
+        if isinstance(action_items, list):
+            for i, action in enumerate(action_items, 1):
+                content.append(f"{i}. {action}")
+        else:
+            content.append(str(action_items))
+        content.append("")
+        
+        # Añadir separador
+        content.append("=" * 50)
+        content.append("")
+        
+        # Añadir sección de transcripción
+        content.append("TRANSCRIPCIÓN COMPLETA")
+        content.append("-" * 50)
+        content.append("")
+        
+        # Formatear utterances con marcas de tiempo
+        if utterances and isinstance(utterances, list) and len(utterances) > 0:
+            for utterance in utterances:
+                try:
+                    # Convertir timestamp a formato mm:ss
+                    start_time = float(utterance.get("start", 0))
+                    minutes = int(start_time // 60)
+                    seconds = int(start_time % 60)
+                    time_str = f"[{minutes:02d}:{seconds:02d}]"
+                    
+                    # Obtener el texto y el speaker (si está disponible)
+                    transcript = utterance.get("transcript", "")
+                    speaker = utterance.get("speaker", None)
+                    
+                    # Formatear la línea según si hay información de speaker
+                    if speaker is not None:
+                        speaker_label = f"Speaker {speaker}"
+                        line = f"{time_str} {speaker_label}: {transcript}"
+                    else:
+                        line = f"{time_str} {transcript}"
+                    
+                    content.append(line)
+                except Exception as e:
+                    logger.error(f"Error al formatear utterance: {e}")
+                    # En caso de error, añadir el utterance en formato raw
+                    content.append(f"[ERROR] {str(utterance)}")
+            content.append("")
+        else:
+            # Si no hay utterances, usar la transcripción completa
+            content.append(transcription)
+        
+        # Unir todo el contenido en un solo string
+        full_content = "\n".join(content)
+        
+        # Escribir el archivo
         with open(txt_path, "w", encoding="utf-8") as f:
-            f.write(job["results"]["transcription"])
+            f.write(full_content)
         
         # Crear respuesta con el nombre de archivo original
         with open(txt_path, "rb") as f:
-            content = f.read()
-            
+            file_content = f.read()
+        
         return Response(
-            content=content,
+            content=file_content,
             media_type="text/plain",
             headers={
                 "Content-Disposition": f'attachment; filename="{original_filename}.txt"',
@@ -455,60 +543,159 @@ async def download_results(process_id: str, format: str = "txt"):
 @app.get("/api/download/{process_id}")
 async def download_results_with_api_prefix(process_id: str, format: str = "txt"):
     """Endpoint duplicado para la descarga con prefijo /api/."""
-    if process_id not in jobs:
-        raise HTTPException(status_code=404, detail="Process not found")
-    
-    job = jobs[process_id]
-    
-    if job["status"] != "completed":
-        raise HTTPException(status_code=400, detail="Process not completed")
-    
-    original_filename = job.get("original_filename", "transcription")
-    
-    if format == "txt":
-        # Return plain text
-        content = job["results"]["transcription"]
+    # Verificar si es una descarga directa desde DB
+    db = SessionLocal()
+    try:
+        # Intentar encontrar la transcripción en la base de datos
+        transcription_db = db.query(DBTranscription).filter(DBTranscription.id == process_id).first()
         
-        return Response(
-            content=content.encode("utf-8"),
-            media_type="text/plain",
-            headers={
-                "Content-Disposition": f'attachment; filename="{original_filename}.txt"',
-                "Content-Type": "text/plain; charset=utf-8"
-            }
-        )
-    elif format == "pdf":
-        # Generate PDF
-        pdf_path = f"results/{process_id}.pdf"
-        
-        if not os.path.exists(pdf_path):
-            # Create PDF
-            from fpdf import FPDF
-            
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", size=12)
-            
-            # Add content
-            pdf.multi_cell(0, 10, job["results"]["transcription"])
-            
-            # Save PDF
-            pdf.output(pdf_path)
-        
-        # Return PDF
-        with open(pdf_path, "rb") as f:
-            content = f.read()
-            
-        return Response(
-            content=content,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": f'attachment; filename="{original_filename}.pdf"',
-                "Content-Type": "application/pdf"
-            }
-        )
-    else:
-        raise HTTPException(status_code=400, detail="Invalid format. Use 'txt' or 'pdf'")
+        if transcription_db:
+            if format == "txt":
+                # Crear contenido estructurado directamente de los datos de la BD
+                
+                # Preparar contenido
+                content = []
+                
+                # Añadir encabezado
+                original_filename = transcription_db.original_filename or "transcripción"
+                original_filename = Path(original_filename).stem
+                
+                content.append(f"TRANSCRIPCIÓN: {original_filename}")
+                content.append("=" * 50)
+                content.append("")
+                
+                # Añadir sección de resumen
+                content.append("RESUMEN")
+                content.append("-" * 50)
+                content.append("")
+                
+                # TL;DR
+                content.append("TL;DR:")
+                content.append(transcription_db.short_summary or "")
+                content.append("")
+                
+                # Puntos Clave
+                content.append("PUNTOS CLAVE:")
+                if transcription_db.key_points:
+                    if isinstance(transcription_db.key_points, list):
+                        for i, point in enumerate(transcription_db.key_points, 1):
+                            content.append(f"{i}. {point}")
+                    else:
+                        content.append(str(transcription_db.key_points))
+                content.append("")
+                
+                # Acciones a Realizar
+                content.append("ACCIONES A REALIZAR:")
+                if transcription_db.action_items:
+                    if isinstance(transcription_db.action_items, list):
+                        for i, action in enumerate(transcription_db.action_items, 1):
+                            content.append(f"{i}. {action}")
+                    else:
+                        content.append(str(transcription_db.action_items))
+                content.append("")
+                
+                # Añadir separador
+                content.append("=" * 50)
+                content.append("")
+                
+                # Añadir sección de transcripción
+                content.append("TRANSCRIPCIÓN COMPLETA")
+                content.append("-" * 50)
+                content.append("")
+                
+                # Formatear utterances con marcas de tiempo si están disponibles
+                utterances = transcription_db.utterances_json
+                
+                if utterances and isinstance(utterances, list) and len(utterances) > 0:
+                    for utterance in utterances:
+                        try:
+                            # Convertir timestamp a formato mm:ss
+                            start_time = float(utterance.get("start", 0))
+                            minutes = int(start_time // 60)
+                            seconds = int(start_time % 60)
+                            time_str = f"[{minutes:02d}:{seconds:02d}]"
+                            
+                            # Obtener el texto y el speaker (si está disponible)
+                            transcript = utterance.get("transcript", "")
+                            speaker = utterance.get("speaker", None)
+                            
+                            # Formatear la línea según si hay información de speaker
+                            if speaker is not None:
+                                speaker_label = f"Speaker {speaker}"
+                                line = f"{time_str} {speaker_label}: {transcript}"
+                            else:
+                                line = f"{time_str} {transcript}"
+                            
+                            content.append(line)
+                        except Exception as e:
+                            logger.error(f"Error al formatear utterance: {e}")
+                            content.append(f"[ERROR] {str(utterance)}")
+                else:
+                    # Si no hay utterances, usar la transcripción completa
+                    content.append(transcription_db.transcription)
+                
+                # Unir todo el contenido en un solo string
+                full_content = "\n".join(content)
+                
+                return Response(
+                    content=full_content.encode("utf-8"),
+                    media_type="text/plain",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{original_filename}.txt"',
+                        "Content-Type": "text/plain; charset=utf-8"
+                    }
+                )
+                
+            elif format == "pdf":
+                # Generar PDF desde datos en la base de datos
+                original_filename = transcription_db.original_filename or "transcripcion"
+                original_filename = Path(original_filename).stem
+                pdf_path = f"results/{process_id}.pdf"
+                
+                if not os.path.exists(pdf_path):
+                    try:
+                        from fpdf import FPDF
+                        
+                        pdf = FPDF()
+                        pdf.add_page()
+                        pdf.set_font("Arial", size=12)
+                        
+                        # Añadir contenido
+                        pdf.multi_cell(0, 10, transcription_db.transcription)
+                        
+                        # Guardar PDF
+                        pdf.output(pdf_path)
+                    except Exception as e:
+                        logger.error(f"Error al generar PDF: {e}")
+                        # Si hay un error, devolver la transcripción como texto
+                        return Response(
+                            content=transcription_db.transcription.encode("utf-8"),
+                            media_type="text/plain",
+                            headers={
+                                "Content-Disposition": f'attachment; filename="{original_filename}.txt"',
+                                "Content-Type": "text/plain; charset=utf-8"
+                            }
+                        )
+                
+                # Devolver PDF
+                with open(pdf_path, "rb") as f:
+                    content = f.read()
+                    
+                return Response(
+                    content=content,
+                    media_type="application/pdf",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{original_filename}.pdf"',
+                        "Content-Type": "application/pdf"
+                    }
+                )
+    except Exception as e:
+        logger.error(f"Error al procesar la solicitud: {e}")
+    finally:
+        db.close()
+    
+    # Si llegamos aquí, intentar con el método original y consultar los jobs en memoria
+    return await download_results(process_id, format)
 
 @app.post("/api/users/token", response_model=Token)
 def login_with_api_prefix(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -776,17 +963,8 @@ async def process_audio_file(process_id: str):
                                 logger.warning(f"No se pudo convertir objeto a formato serializable: {e}")
                                 return str(obj)  # Último recurso: convertir a string
                     
-                    # Verificar el contenido de utterances_data
-                    logger.info(f"Tipo de utterances_data: {type(utterances_data)}")
-                    logger.info(f"Longitud de utterances_data: {len(utterances_data) if isinstance(utterances_data, list) else 'No es una lista'}")
-                    
                     # Convertir utterances a formato serializable
                     utterances_data = make_json_serializable(utterances_data)
-                    
-                    # Verificar el resultado de la conversión
-                    logger.info(f"Utterances serializables: {len(utterances_data)}")
-                    if utterances_data and len(utterances_data) > 0:
-                        logger.info(f"Ejemplo del primer utterance serializable: {utterances_data[0]}")
                     
                     if not existing:
                         # Crear entrada en la base de datos con información adicional

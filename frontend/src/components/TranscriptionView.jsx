@@ -41,14 +41,11 @@ const TranscriptionView = ({ transcription, onDownload }) => {
   useEffect(() => {
     // Extraer utterances de la transcripción
     if (transcription && typeof transcription === 'object') {
-      console.log("[TranscriptionView] Procesando transcripción:", transcription);
-      
       // Si tenemos utterances_json y es un array no vacío, usamos esos datos
       if (transcription.utterances_json && 
           Array.isArray(transcription.utterances_json) && 
           transcription.utterances_json.length > 0) {
         
-        console.log("[TranscriptionView] Usando utterances_json del objeto transcripción");
         // Ordenamos por tiempo de inicio
         const sortedUtterances = [...transcription.utterances_json]
           .sort((a, b) => a.start - b.start);
@@ -58,18 +55,15 @@ const TranscriptionView = ({ transcription, onDownload }) => {
                 typeof transcription.utterances_json === 'object' && 
                 !Array.isArray(transcription.utterances_json)) {
         
-        console.log("[TranscriptionView] Utterances_json es un objeto, convirtiéndolo a array");
         // Si es un objeto individual, lo convertimos a array
         setUtterances([transcription.utterances_json]);
         
       } else {
         // [SF] Si no hay utterances válidos, creamos un utterance único con toda la transcripción
-        console.log("[TranscriptionView] No hay utterances válidos, creando fallback");
         setUtterances(createFallbackUtterance());
       }
     } else if (typeof transcription === 'string') {
       // Si es una cadena, creamos un utterance único
-      console.log("[TranscriptionView] Transcripción es una cadena, creando utterance simple");
       setUtterances([{
         start: 0,
         end: 0,
@@ -77,7 +71,6 @@ const TranscriptionView = ({ transcription, onDownload }) => {
         id: 'single-utterance'
       }]);
     } else {
-      console.log("[TranscriptionView] No hay transcripción válida");
       setUtterances([]);
     }
   }, [transcription]);

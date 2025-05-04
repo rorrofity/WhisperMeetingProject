@@ -115,19 +115,115 @@ A partir de la versión 1.0, el proyecto utiliza Deepseek para generar automáti
    DEEPSEEK_API_KEY=tu_clave_deepseek_aqui
    ```
 
-## 7. Consideraciones de Uso y Crédito
+## 7. Manejo de Utterances en Deepgram
 
-- Las transcripciones con Deepgram se facturan por minuto de audio procesado.
-- Los resúmenes con Deepseek se facturan por tokens procesados (entrada y salida).
-- Ambos servicios ofrecen créditos gratuitos para comenzar:
-  - Deepgram: $200 en crédito gratuito al registrarte
-  - Deepseek: Varía según promociones, consulta su página
+### ¿Qué son los Utterances?
 
-## 8. Solución de Problemas Comunes
+Los utterances (segmentos de habla) son divisiones de la transcripción que representan unidades lógicas de habla, como oraciones o frases. Deepgram puede detectar automáticamente estos segmentos cuando se habilita la opción `utterances=true` en la solicitud de API.
 
-- **Error de autenticación**: Verifica que las API keys estén correctamente escritas en el archivo `.env`.
-- **Límites de tamaño**: Deepgram limita los archivos a 2 horas o 1GB. Deepseek tiene límites de tokens por solicitud.
-- **Problemas de transcripción**: Para mejorar resultados, considera usar archivos de audio con buena calidad y poco ruido de fondo.
+### Configuración para Obtener Utterances
+
+```python
+# Configuración para obtener utterances en la respuesta de Deepgram
+options = {
+    "model": "nova-2",
+    "language": "es-419",
+    "diarize": True,  # Para identificar diferentes hablantes
+    "utterances": True,  # Habilitar detección de utterances
+    "utt_split": 2.5,  # Segundos de silencio para dividir utterances
+    "punctuate": True,
+    "smart_format": True
+}
+```
+
+### Serialización de Objetos Deepgram
+
+Un desafío importante al trabajar con la API de Deepgram es que los objetos devueltos (como `Utterance` y `ListenRESTWord`) no son directamente serializables a JSON para su almacenamiento en la base de datos. Para resolver este problema, implementamos una función recursiva que convierte estos objetos complejos a estructuras serializables:
+
+```python
+def make_json_serializable(obj):
+    if obj is None:
+        return None
+    elif isinstance(obj, (str, int, float, bool)):
+        return obj
+    elif isinstance(obj, list):
+        return [make_json_serializable(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {k: make_json_serializable(v) for k, v in obj.items()}
+    elif hasattr(obj, 'to_dict'):
+        try:
+            return make_json_serializable(obj.to_dict())
+        except Exception as e:
+            logger.warning(f"Error al convertir objeto a dict con to_dict: {e}")
+    elif hasattr(obj, '__dict__'):
+        return make_json_serializable(obj.__dict__)
+    else:
+        # Para objetos desconocidos, intentar extraer atributos básicos
+        try:
+            basic_attrs = {
+                'start': getattr(obj, 'start', 0),
+                'end': getattr(obj, 'end', 0),
+                'transcript': getattr(obj, 'transcript', ''),
+                'id': getattr(obj, 'id', str(uuid.uuid4())),
+                'confidence': getattr(obj, 'confidence', None),
+                'speaker': getattr(obj, 'speaker', None),
+                'channel': getattr(obj, 'channel', None)
+            }
+            if hasattr(obj, 'word'):
+                basic_attrs['word'] = getattr(obj, 'word', '')
+                basic_attrs['punctuated_word'] = getattr(obj, 'punctuated_word', '')
+            return {k: v for k, v in basic_attrs.items() if v is not None}
+        except Exception:
+            return str(obj)  # Último recurso: convertir a string
+```
+
+### Manejo de Utterances en el Frontend
+
+En el frontend, implementamos una lógica robusta para manejar diferentes escenarios:
+
+1. **Con utterances válidos**: Muestra los segmentos ordenados por tiempo de inicio
+2. **Sin utterances**: Crea un utterance único con el texto completo de la transcripción
+3. **Formato incorrecto**: Maneja graciosamente diferentes formatos de datos
+
+Esto garantiza que siempre se muestre contenido útil al usuario, incluso cuando hay problemas con los datos de utterances.
+
+## 8. Solución de Problemas
+
+### Errores Comunes con Deepgram
+
+1. **Error de Autenticación**:
+   - Mensaje: `Authentication failed` o `Invalid API Key`
+   - Solución: Verifica que tu API Key sea correcta y esté vigente.
+
+2. **Formato de Audio No Soportado**:
+   - Mensaje: `Unsupported audio format`
+   - Solución: Convierte tu audio a un formato compatible como WAV, MP3, MP4, o FLAC.
+
+3. **Audio Demasiado Grande**:
+   - Mensaje: `File size exceeds maximum allowed`
+   - Solución: Divide el archivo en segmentos más pequeños o utiliza la API de streaming.
+
+4. **Problemas de Serialización**:
+   - Mensaje: `Object of type ListenRESTWord is not JSON serializable`
+   - Solución: Utiliza la función `make_json_serializable` para convertir los objetos Deepgram a formatos serializables.
+
+5. **Problemas de Red**:
+   - Mensaje: `Connection timeout` o `Network error`
+   - Solución: Verifica tu conexión a internet y que los servidores de Deepgram estén operativos.
+
+### Errores Comunes con Deepseek
+
+1. **Error de Autenticación**:
+   - Mensaje: `Authentication failed` o `Invalid API Key`
+   - Solución: Verifica que tu API Key sea correcta y esté vigente.
+
+2. **Límite de Tokens Excedido**:
+   - Mensaje: `Token limit exceeded`
+   - Solución: Reduce el tamaño de la transcripción o divide la solicitud en partes más pequeñas.
+
+3. **Problemas de Formato**:
+   - Mensaje: `Invalid format` o `Malformed request`
+   - Solución: Asegúrate de que estás enviando el JSON en el formato correcto según la documentación.
 
 ---
 

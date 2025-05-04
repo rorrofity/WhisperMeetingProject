@@ -1,11 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+import logging
 
 from database.connection import get_db
 from models.models import Transcription, User
 from models.schemas import Transcription as TranscriptionSchema, TranscriptionCreate
 from auth.jwt import get_current_active_user
+
+# Configurar logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/transcriptions",
@@ -21,9 +25,25 @@ def get_user_transcriptions(
     db: Session = Depends(get_db)
 ):
     """Obtiene todas las transcripciones del usuario actual."""
+    logger.info(f"Usuario {current_user.username} (ID: {current_user.id}) solicitó transcripciones")
+    
+    # Primero verificamos cuántas transcripciones hay en total en la base de datos
+    total_transcriptions = db.query(Transcription).count()
+    logger.info(f"Total de transcripciones en la base de datos: {total_transcriptions}")
+    
+    # Ahora filtramos por el usuario actual
     transcriptions = db.query(Transcription).filter(
         Transcription.user_id == current_user.id
     ).offset(skip).limit(limit).all()
+    
+    logger.info(f"Encontradas {len(transcriptions)} transcripciones para el usuario {current_user.username} (ID: {current_user.id})")
+    
+    # Si no hay transcripciones, verificamos si hay alguna sin usuario asociado
+    if len(transcriptions) == 0 and total_transcriptions > 0:
+        orphan_transcriptions = db.query(Transcription).filter(
+            Transcription.user_id.is_(None)
+        ).all()
+        logger.info(f"Transcripciones sin usuario asociado: {len(orphan_transcriptions)}")
     
     return transcriptions
 

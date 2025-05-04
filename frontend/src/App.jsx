@@ -438,9 +438,17 @@ function AppContent() {
       action_items: Array.isArray(selectedTranscription.action_items) ? selectedTranscription.action_items : []
     };
     
+    // [SF] Crear un objeto de transcripción completo con los utterances
+    const transcriptionObj = {
+      transcription: selectedTranscription.content || selectedTranscription.transcription,
+      utterances_json: selectedTranscription.utterances_json || []
+    };
+    
+    console.log("[handleSelectHistoryTranscription] Datos completos de la transcripción:", transcriptionObj);
+    
     // Usar nuestra función unificada para manejar la selección del historial
     handleTranscriptionCompleted(
-      selectedTranscription.content || selectedTranscription.transcription, 
+      transcriptionObj, 
       summaryData,
       selectedTranscription.title
     );

@@ -6,6 +6,9 @@ import shutil
 import tempfile
 import logging
 import uuid
+import asyncio
+import json
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
@@ -130,6 +133,8 @@ async def upload_file_simple(
         shutil.copyfileobj(file.file, f)
     
     # Store job info
+    logger.info(f"Usuario autenticado: {current_user.username} (ID: {current_user.id})")
+    
     jobs[process_id] = {
         "status": "uploaded",
         "file_path": str(file_path),
@@ -138,6 +143,11 @@ async def upload_file_simple(
         "summary_method": "deepseek", # Usar Deepseek para resúmenes
         "user_id": current_user.id  # Asociar con el usuario actual
     }
+    
+    # Verificar que el user_id se haya asignado correctamente
+    logger.info(f"Job creado para process_id {process_id}:")
+    logger.info(f"Keys en job: {list(jobs[process_id].keys())}")
+    logger.info(f"user_id asignado: {jobs[process_id].get('user_id')}")
     
     # Process in background
     if background_tasks:
@@ -548,14 +558,20 @@ async def get_user_transcriptions_with_api_prefix(
                     "title": t.title or "",
                     "original_filename": t.original_filename or "",
                     "content": t.transcription or "",  # Usar el nombre antiguo para compatibilidad
+                    "transcription": t.transcription or "",  # [SF] Añadir campo transcription para consistencia
                     "file_path": t.audio_path or "",   # Usar el nombre antiguo para compatibilidad
                     "created_at": t.created_at.isoformat() if t.created_at else None,
                     "user_id": str(t.user_id),
                     # Añadir campos de resumen
                     "short_summary": t.short_summary or "",
                     "key_points": t.key_points or [],
-                    "action_items": t.action_items or []
+                    "action_items": t.action_items or [],
+                    # [SF] Añadir utterances_json para que se muestren los segmentos
+                    "utterances_json": t.utterances_json or []
                 }
+                
+                # Verificar si hay utterances
+                logger.info(f"Transcripción {t.id}: utterances_json {'presente' if t.utterances_json else 'ausente'}")
                 
                 result.append(trans_dict)
                 
@@ -692,20 +708,90 @@ async def process_audio_file(process_id: str):
             # Update status
             job["status"] = "completed"
             
-            # Guardar en la base de datos si el job tiene un usuario asociado
+            # Verificar la estructura completa del objeto job
+            logger.info(f"Estructura del objeto job para process_id {process_id}:")
+            logger.info(f"Keys en job: {list(job.keys())}")
+            logger.info(f"user_id presente: {'user_id' in job}")
+            if 'user_id' in job:
+                logger.info(f"Valor de user_id: {job['user_id']}")
+            logger.info(f"Keys en job['results']: {list(job.get('results', {}).keys())}")
+            
+            # Guardar en la base de datos si el usuario está autenticado
             if "user_id" in job and job["user_id"]:
+                logger.info(f"Guardando transcripción para el usuario con ID: {job['user_id']}. Process ID: {process_id}")
                 try:
-                    # Crear sesión de base de datos
                     db = SessionLocal()
-                    
-                    # Verificar si ya existe una transcripción con este process_id
+                    # Verificar si ya existe una entrada para esta transcripción
                     existing = db.query(DBTranscription).filter(
-                        DBTranscription.audio_path == file_path
+                        DBTranscription.id == process_id
                     ).first()
+                    
+                    logger.info(f"¿Existe transcripción previa con ID {process_id}? {'Sí' if existing else 'No'}")
+                    
+                    # Preparar datos de utterances para guardar
+                    # [SF] Corregir la clave para acceder a los utterances (utterances_json en lugar de utterances)
+                    utterances_data = job["results"].get("utterances_json", [])
+                    
+                    # Verificar el contenido de utterances_data
+                    logger.info(f"Tipo de utterances_data: {type(utterances_data)}")
+                    logger.info(f"Longitud de utterances_data: {len(utterances_data) if isinstance(utterances_data, list) else 'No es una lista'}")
+                    
+                    # [SF] Función recursiva para convertir objetos complejos a formatos serializables a JSON
+                    def make_json_serializable(obj):
+                        if obj is None:
+                            return None
+                        elif isinstance(obj, (str, int, float, bool)):
+                            return obj
+                        elif isinstance(obj, list):
+                            return [make_json_serializable(item) for item in obj]
+                        elif isinstance(obj, dict):
+                            return {k: make_json_serializable(v) for k, v in obj.items()}
+                        elif hasattr(obj, 'to_dict'):
+                            try:
+                                return make_json_serializable(obj.to_dict())
+                            except Exception as e:
+                                logger.warning(f"Error al convertir objeto a dict con to_dict: {e}")
+                        elif hasattr(obj, '__dict__'):
+                            return make_json_serializable(obj.__dict__)
+                        else:
+                            # Para objetos desconocidos, intentar extraer atributos básicos
+                            try:
+                                # Extraer atributos comunes de utterances
+                                basic_attrs = {
+                                    'start': getattr(obj, 'start', 0),
+                                    'end': getattr(obj, 'end', 0),
+                                    'transcript': getattr(obj, 'transcript', ''),
+                                    'id': getattr(obj, 'id', str(uuid.uuid4())),
+                                    # Intentar obtener otros atributos comunes
+                                    'confidence': getattr(obj, 'confidence', None),
+                                    'speaker': getattr(obj, 'speaker', None),
+                                    'channel': getattr(obj, 'channel', None)
+                                }
+                                # Si es un objeto word, extraer atributos específicos
+                                if hasattr(obj, 'word'):
+                                    basic_attrs['word'] = getattr(obj, 'word', '')
+                                    basic_attrs['punctuated_word'] = getattr(obj, 'punctuated_word', '')
+                                return {k: v for k, v in basic_attrs.items() if v is not None}
+                            except Exception as e:
+                                logger.warning(f"No se pudo convertir objeto a formato serializable: {e}")
+                                return str(obj)  # Último recurso: convertir a string
+                    
+                    # Verificar el contenido de utterances_data
+                    logger.info(f"Tipo de utterances_data: {type(utterances_data)}")
+                    logger.info(f"Longitud de utterances_data: {len(utterances_data) if isinstance(utterances_data, list) else 'No es una lista'}")
+                    
+                    # Convertir utterances a formato serializable
+                    utterances_data = make_json_serializable(utterances_data)
+                    
+                    # Verificar el resultado de la conversión
+                    logger.info(f"Utterances serializables: {len(utterances_data)}")
+                    if utterances_data and len(utterances_data) > 0:
+                        logger.info(f"Ejemplo del primer utterance serializable: {utterances_data[0]}")
                     
                     if not existing:
                         # Crear entrada en la base de datos con información adicional
                         db_transcription = DBTranscription(
+                            id=process_id,  # [SF] Asignar explícitamente el process_id como ID
                             title=f"Transcripción de {Path(file_path).name}",
                             original_filename=job.get("original_filename", Path(file_path).name),
                             audio_path=file_path,
@@ -728,6 +814,16 @@ async def process_audio_file(process_id: str):
                     
                     # Commit para guardar los cambios
                     db.commit()
+                    
+                    # Verificar que se guardó correctamente
+                    verification = db.query(DBTranscription).filter(
+                        DBTranscription.id == process_id
+                    ).first()
+                    
+                    if verification:
+                        logger.info(f"Transcripción verificada en la base de datos. ID: {verification.id}, User ID: {verification.user_id}")
+                    else:
+                        logger.error(f"No se pudo verificar la transcripción en la base de datos después del commit. Process ID: {process_id}")
                     
                     # Mantener este log ya que es informativo para operaciones importantes
                     logger.info(f"Transcripción y resumen guardados correctamente en la base de datos para el proceso {process_id}")
